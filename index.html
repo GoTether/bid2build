@@ -1,690 +1,682 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>bid2build</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Arca Tethr • Inventory</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* ========== Reset and Base Styles ========== */
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0; padding: 0; height: 100%; width: 100%;
-      font-family: 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Helvetica Neue', Arial, sans-serif;
-      color: #34395a;
-      background: #f4f7fa;
-    }
-    body { display: flex; flex-direction: column; min-height: 100vh; }
-
-    a { color: #3250a8; text-decoration: none; }
-    a:hover, a:focus { text-decoration: underline; }
-    h1, h2, h3, h4, h5, h6 { margin: 0; font-weight: 700; }
-
-    /* ========== Navigation Bar ========== */
-    .navbar {
-      background: linear-gradient(90deg, #234075 70%, #476db5 100%);
-      color: #fff;
-      box-shadow: 0 2px 8px rgba(35,64,117,0.07);
-      display: flex; align-items: center;
-      padding: 0 32px; height: 66px; flex-shrink: 0;
-      z-index: 10;
-    }
-    .navbar .title {
-      font-size: 1.8rem; font-weight: 800; letter-spacing: -2px;
-    }
-    .navbar nav { margin-left: auto; }
-    .navbar ul {
-      display: flex; list-style: none; margin: 0; padding: 0;
-    }
-    .navbar li {
-      margin-left: 18px; padding: 10px 22px; cursor: pointer;
-      border-radius: 28px; font-size: 1.05rem; font-weight: 500;
-      transition: background .18s;
-    }
-    .navbar li.active,
-    .navbar li:hover {
-      background: #3250a8;
-      color: #fff;
-    }
-
-    /* ========== Section Header ========== */
-    .section-header {
-      margin: 18px 0 16px 0;
-      font-size: 2.1rem;
-      font-weight: 800;
-      color: #234075;
-      letter-spacing: -1px;
-      text-align: left;
-    }
-
-    /* ========== Content Wrapper ========== */
-    #main {
-      flex: 1; overflow-y: auto; background: #f4f7fa;
-      padding-bottom: 32px;
-    }
-    .section { display: none; padding: 0 24px 24px; }
-    .section.active { display: block; animation: fadein .3s; }
-
-    @keyframes fadein {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: none; }
-    }
-
-    /* ========== Toolbar ========== */
-    .toolbar {
-      display: flex; flex-wrap: wrap; gap: 18px; align-items: center;
-      margin-bottom: 22px; background: #fff;
-      border-radius: 12px; box-shadow: 0 1px 4px rgba(35,64,117,0.04);
-      padding: 12px 18px;
-    }
-    .toolbar input[type="search"] {
-      flex: 1; min-width: 220px; padding: 10px 14px;
-      border: 1px solid #d1d8ec;
-      border-radius: 8px; font-size: 1rem;
-      background: #f7f8fc;
-      transition: border-color .15s;
-    }
-    .toolbar input[type="search"]:focus { border-color: #3250a8; }
-    .toolbar select, .toolbar .view-toggle button {
-      padding: 10px 14px;
-      border: 1px solid #d1d8ec;
-      background: #f7f8fc;
-      border-radius: 8px; font-size: 1rem; cursor: pointer;
-      transition: background .15s, border-color .15s;
-    }
-    .toolbar .view-toggle { display: flex; gap: 6px; }
-    .toolbar .view-toggle button.active {
-      background: #3250a8; color: #fff; border-color: #3250a8;
-      font-weight: 600;
-    }
-
-    /* ========== Tile/Card View ========== */
-    .tile-container {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
-      gap: 32px; padding: 8px 2px;
-    }
-    .tile {
-      background: linear-gradient(135deg, #ffffff 60%, #e9eaf3 100%);
-      border: 1px solid #e1e5ee;
-      border-radius: 18px;
-      box-shadow: 0 2px 18px rgba(35,64,117,0.08);
-      padding: 32px 24px 22px;
-      display: flex; flex-direction: column; align-items: center;
-      transition: box-shadow .18s, transform .18s;
-      cursor: pointer; position: relative;
-      min-height: 220px;
-    }
-    .tile:hover {
-      box-shadow: 0 8px 32px rgba(35,64,117,0.14);
-      transform: translateY(-2px) scale(1.02);
-      border-color: #476db5;
-    }
-    .tile .avatar {
-      width: 64px; height: 64px; border-radius: 50%;
-      background: #dbe7ff; object-fit: cover; margin-bottom: 16px;
-      box-shadow: 0 2px 8px rgba(35,64,117,0.07);
-      border: 2.5px solid #f7f8fc;
-    }
-    .tile .title {
-      font-size: 1.35rem; font-weight: 700; color: #234075;
-      margin-bottom: 8px; text-align: center;
-    }
-    .tile .subtext {
-      font-size: 1rem; color: #555; margin-bottom: 8px; text-align: center;
-    }
-    .tile .amount {
-      font-size: 1.1rem; color: #476db5; font-weight: 600; margin-bottom: 8px;
-    }
-    .tile .status-pill {
-      position: absolute; top: 18px; right: 18px;
-      background: #476db5; color: #fff; border-radius: 16px; padding: 4px 12px;
-      font-size: 0.87rem; font-weight: 500;
-      box-shadow: 0 1px 3px rgba(35,64,117,0.11);
-      letter-spacing: .03em;
-    }
-
-    /* ========== List/Table View ========== */
-    table.list-table {
-      width: 100%; border-collapse: collapse; background: #fff;
-      border-radius: 12px; overflow: hidden; box-shadow: 0 1px 8px rgba(35,64,117,0.07);
-      margin-bottom: 20px;
-    }
-    table.list-table thead th {
-      background: #f1f3f8; text-align: left; font-weight: 700; padding: 12px;
-      font-size: 1rem; position: sticky; top: 0; z-index: 1;
-    }
-    table.list-table tbody td {
-      padding: 14px 12px; border-top: 1px solid #e1e5ee; font-size: 1rem;
-    }
-    table.list-table tbody tr { cursor: pointer; }
-    table.list-table tbody tr:hover {
-      background: #f7f8fc;
-    }
-    table.list-table tbody tr:nth-child(even) { background: #f2f6fa; }
-
-    /* ========== Dashboard Stats Cards ========== */
-    .stats-row {
-      display: flex; gap: 32px; flex-wrap: wrap; margin-top: 20px;
-    }
-    .stat-card {
-      background: linear-gradient(120deg, #e9eaf3 70%, #fff 100%);
-      border-radius: 16px; box-shadow: 0 2px 10px rgba(35,64,117,0.09);
-      padding: 26px 32px;
-      min-width: 220px; flex: 1;
-      display: flex; flex-direction: column; align-items: flex-start;
-    }
-    .stat-title {
-      font-size: 1.08rem; color: #476db5; font-weight: 600; margin-bottom: 7px;
-    }
-    .stat-value {
-      font-size: 2.2rem; color: #234075; font-weight: 800; letter-spacing: -2px;
-    }
-    .stat-icon {
-      font-size: 2.3rem; margin-bottom: 7px; color: #3250a8;
-    }
-
-    /* ========== Overlay (Detail Drawer) ========== */
-    .overlay {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.35); display: none;
-      align-items: center; justify-content: center; z-index: 1000;
-    }
-    .overlay.show { display: flex; }
-    .overlay .drawer {
-      position: absolute; top: 0; right: 0; height: 100%; width: 100%;
-      max-width: 640px; min-width: 480px; background: #fff;
-      box-shadow: -2px 0 14px rgba(35,64,117,0.18);
-      overflow-y: auto; transform: translateX(100%);
-      transition: transform .3s ease;
-      display: flex; flex-direction: column;
-    }
-    .overlay.show .drawer.open { transform: translateX(0); }
-    @media (max-width: 600px) {
-      .overlay .drawer { max-width: none; min-width: 0; width: 100%; }
-    }
-    .drawer-header {
-      position: sticky; top: 0; background: #fff; padding: 22px 28px;
-      border-bottom: 1px solid #e1e5ee; z-index: 10;
-    }
-    .drawer-header h2 { font-size: 2rem; margin-bottom: 4px; }
-    .drawer-header .subline { color: #555; font-size: 1rem; }
-    .drawer-close {
-      position: absolute; top: 18px; right: 18px;
-      background: none; border: none; font-size: 2.1rem;
-      cursor: pointer; color: #888; min-width: 44px; min-height: 44px;
-    }
-    .drawer-close:hover { color: #234075; }
-    .selected {
-      outline: 2px solid #234075; box-shadow: 0 0 6px #234075;
-    }
-    .modal-open { position: fixed; overflow-y: hidden; width: 100%; }
-    .drawer-content { padding: 22px 28px 40px; }
-    .detail-section { margin-bottom: 28px; }
-    .detail-section h3 {
-      margin-bottom: 10px; font-size: 1.25rem; font-weight: 700; color: #234075;
-    }
-    .detail-info { font-size: 1rem; line-height: 1.6; }
-    .detail-info a { margin-right: 14px; display: inline-block; }
-
-    /* ========== Tabs within Details ========== */
-    .detail-tabs {
-      display: flex; border-bottom: 1px solid #e1e5ee; margin-bottom: 18px;
-    }
-    .detail-tabs button {
-      padding: 12px 26px; border: none; background: none; cursor: pointer;
-      font-size: 1.03rem; color: #555; border-bottom: 3px solid transparent;
-      font-weight: 500;
-    }
-    .detail-tabs button.active {
-      color: #234075; font-weight: 700; border-bottom-color: #234075;
-    }
-
-    /* ========== Empty State ========== */
-    .empty {
-      padding: 44px; text-align: center; color: #666; font-size: 1.09rem;
-    }
-
-    /* ========== Print Styles ========== */
-    @media print {
-      body * { visibility: hidden; }
-      .preview-overlay.show .doc-page, .preview-overlay.show .doc-page * { visibility: visible; }
-      .preview-overlay.show .doc-page {
-        margin: 0; box-shadow: none; width: 100%; min-height: 0; padding: 0.5in;
-      }
-    }
-
-    /* ========== Modal Overlay for New Document and Wizard ========== */
-    .modal-overlay, .wizard-overlay {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center;
-      z-index: 1200;
-    }
-    .modal-overlay.show, .wizard-overlay.show { display: flex; }
-    .modal-content, .wizard-content {
-      background: #fff; border-radius: 12px; padding: 28px; max-width: 520px; width: 94%;
-      box-shadow: 0 4px 16px rgba(35,64,117,0.20);
-    }
-    .wizard-content { max-width: 640px; }
-    .modal-content h3, .wizard-content h3 {
-      margin-top: 0; font-size: 1.45rem; color: #234075;
-    }
-    .modal-actions {
-      margin-top: 20px; display: flex; justify-content: flex-end; gap: 12px;
-    }
-
-    /* ========== Document List Styles ========== */
-    .doc-list { width: 100%; border-collapse: collapse; }
-    .doc-list th, .doc-list td {
-      padding: 10px; text-align: left; border-bottom: 1px solid #e1e5ee; font-size: 0.97rem;
-    }
-    .doc-list th { background: #f1f3f8; font-weight: 700; }
-    .doc-list tr:hover { background: #f9fbff; }
-    .doc-actions { display: flex; gap: 7px; }
-    .doc-actions button {
-      border: none; background: none; cursor: pointer; font-size: 0.95rem; color: #234075; padding: 2px 4px;
-    }
-    .doc-actions button:hover { text-decoration: underline; }
-    .add-doc-btn {
-      margin-bottom: 14px; padding: 10px 16px; background: #234075; color: #fff; border: none; border-radius: 7px;
-      cursor: pointer; font-size: 1rem;
-      font-weight: 600;
-    }
-    .add-doc-btn:hover { background: #476db5; }
-
-    /* ========== Document Preview Overlay ========== */
-    .preview-overlay {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1100;
-    }
-    .preview-overlay.show { display: flex; }
-    .preview-content {
-      background: #fff; width: 92%; height: 90%; display: flex; flex-direction: column;
-      border-radius: 10px; box-shadow: 0 5px 18px rgba(35,64,117,0.22); overflow: hidden; position: relative;
-    }
-    .preview-header {
-      padding: 16px 26px; background: #f1f3f8; display: flex; align-items: center; justify-content: space-between;
-    }
-    .preview-header h3 { margin: 0; font-size: 1.25rem; color: #234075; }
-    .preview-body {
-      flex: 1; overflow: auto; padding: 26px; display: flex; justify-content: center; align-items: flex-start;
-    }
-    .doc-page {
-      width: 8.5in; min-height: 11in; padding: 1in; box-shadow: 0 0 12px rgba(35,64,117,0.14);
-      background: #fff; color: #333; font-size: 13pt; position: relative;
-    }
-    .doc-page h1 { font-size: 28pt; margin-bottom: 12px; }
-    .doc-page h2 { font-size: 20pt; margin: 20px 0 10px; }
-    .doc-page table { width: 100%; border-collapse: collapse; font-size: 11pt; }
-    .doc-page table th, .doc-page table td { border: 1px solid #ccc; padding: 6px; }
-    .doc-page table th { background: #f5f5f5; }
-    .doc-page .totals { margin-top: 12px; text-align: right; font-size: 12pt; }
-    .preview-close {
-      background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #555;
-    }
-    .preview-close:hover { color: #234075; }
-    .print-btn {
-      margin-left: 8px; padding: 7px 14px; background: #234075; color: #fff; border: none; border-radius: 6px;
-      cursor: pointer; font-size: 0.93rem; font-weight: 600;
-    }
-    .print-btn:hover { background: #476db5; }
-
-    /* ========== Wizard/Modal Table Styles ========== */
-    .wizard-table {
-      width: 100%; border-collapse: collapse; margin-bottom: 16px;
-    }
-    .wizard-table th, .wizard-table td {
-      border: 1px solid #e1e5ee; padding: 10px; text-align: left;
-    }
-    .wizard-table th { background: #f1f3f8; font-weight: 700; }
-    .wizard-summary {
-      margin-top: 14px; border-top: 1px solid #e1e5ee; padding-top: 14px;
-    }
+    html,body{height:100%}
+    .glass{background:rgba(255,255,255,.07);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.12)}
+    .truncate-1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .snackbar{animation:fadeIn .12s ease-out}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
   </style>
 </head>
-<body>
-  <header class="navbar">
-    <div class="title">bid2build</div>
-    <nav>
-      <ul>
-        <li data-tab="projects" class="active">Projects</li>
-        <li data-tab="people">People</li>
-        <li data-tab="products">Products</li>
-        <li data-tab="dashboard">Dashboard</li>
-      </ul>
-    </nav>
-  </header>
-  <main id="main">
-    <!-- Projects Section -->
-    <div class="section active" id="projects-section">
-      <div class="section-header">Projects</div>
-      <div class="toolbar">
-        <input type="search" id="projects-search" placeholder="Search projects..." aria-label="Search projects">
-        <select id="projects-filter" aria-label="Filter projects by status">
-          <option value="all">All Statuses</option>
-          <option value="Planned">Planned</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Completed">Completed</option>
-        </select>
-        <div class="view-toggle" id="projects-view-toggle">
-          <button data-view="tile" class="active" aria-label="Tile view">Tile</button>
-          <button data-view="list" aria-label="List view">List</button>
+<body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
+  <main class="max-w-6xl mx-auto p-4 space-y-4">
+
+    <!-- Brand bar -->
+    <header class="flex items-center justify-between">
+      <h1 class="text-xl font-semibold">Arca Tethr</h1>
+      <div class="flex items-center gap-2">
+        <a href="./arcadash.html" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm">Arcadash</a>
+        <button id="pinBtn" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm">+ Add to my Arcadash</button>
+        <button id="switchBtn" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm">Switch</button>
+      </div>
+    </header>
+
+    <div id="status" class="hidden mb-1 text-sm"></div>
+
+    <!-- View A: Enter ID -->
+    <section id="viewEnter" class="glass rounded-2xl p-4 max-w-xl">
+      <h2 class="font-semibold mb-2">Open an Arca</h2>
+      <label class="text-xs block mb-1">Arca ID (from tag)</label>
+      <div class="flex gap-2">
+        <input id="idInput" class="flex-1 rounded-xl px-3 py-2 bg-slate-800/60 outline-none" placeholder="e.g., ARCA-TAG1"/>
+        <button id="openBtn" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4">Go</button>
+      </div>
+      <div class="text-[11px] text-slate-400 mt-2">We’ll look it up. If it’s new, you can create it.</div>
+    </section>
+
+    <!-- View B: Create new arca -->
+    <section id="viewCreate" class="glass rounded-2xl p-4 max-w-xl hidden">
+      <h2 class="font-semibold mb-2">Create a new Arca</h2>
+      <div class="grid gap-3">
+        <div>
+          <label class="text-xs block mb-1">Arca ID</label>
+          <input id="newId" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none" readonly/>
+          <div class="text-[11px] text-slate-400 mt-1">This comes from the tag / URL. It’s the address used to open this Arca.</div>
+        </div>
+        <div>
+          <label class="text-xs block mb-1">Name</label>
+          <input id="newName" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none" placeholder="e.g., Pantry • Bin A"/>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs block mb-1">Type (optional)</label>
+            <select id="newType" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none">
+              <option value="">—</option>
+              <option>Container</option>
+              <option>Drawer</option>
+              <option>Box</option>
+              <option>Shelf</option>
+              <option>Room</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs block mb-1">Location (optional)</label>
+            <input id="newLoc" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none" placeholder="e.g., Kitchen / Pantry"/>
+          </div>
+        </div>
+        <div>
+          <label class="text-xs block mb-1">Photo of Arca (optional)</label>
+          <input id="newPhoto" type="file" accept="image/*" capture="environment"
+                 class="w-full text-sm file:bg-slate-700 file:border-0 file:rounded-lg file:px-3 file:py-2"/>
+        </div>
+        <div>
+          <label class="text-xs block mb-1">Notes (optional)</label>
+          <textarea id="newNotes" rows="2" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"
+                    placeholder="e.g., Top shelf in pantry"></textarea>
         </div>
       </div>
-      <div id="projects-content"></div>
-    </div>
+      <div class="mt-4 flex items-center justify-end gap-2">
+        <button id="cancelCreate" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Cancel</button>
+        <button id="saveCreate" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4 py-2">Create</button>
+      </div>
+    </section>
 
-    <!-- People Section -->
-    <div class="section" id="people-section">
-      <div class="section-header">People</div>
-      <div class="toolbar">
-        <input type="search" id="people-search" placeholder="Search people..." aria-label="Search people">
-        <select id="people-filter" aria-label="Filter people by type">
-          <option value="all">All Types</option>
-          <option value="Client">Client</option>
-          <option value="Contractor">Contractor</option>
-          <option value="Vendor">Vendor</option>
-          <option value="Subcontractor">Subcontractor</option>
-        </select>
-        <div class="view-toggle" id="people-view-toggle">
-          <button data-view="tile" class="active">Tile</button>
-          <button data-view="list">List</button>
+    <!-- View C: App (compact hero + add item + grid tiles) -->
+    <section id="viewApp" class="hidden space-y-4">
+
+      <!-- COMPACT HERO -->
+      <section id="arcaHero" class="glass rounded-2xl p-3">
+        <div class="flex items-start gap-3">
+          <div class="shrink-0">
+            <img id="arcaHeroImg" class="w-20 h-20 rounded-xl object-cover hidden" alt="">
+            <div id="arcaHeroPh" class="w-20 h-20 rounded-xl bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,.30),transparent_40%),linear-gradient(180deg,rgba(2,6,23,.2),rgba(2,6,23,.7))]"></div>
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                <h2 id="arcaName" class="text-lg font-semibold truncate-1">Loading…</h2>
+                <div id="arcaMeta" class="text-xs text-slate-300/90 mt-0.5 truncate-1"></div>
+              </div>
+              <button id="editArcaBtn" class="rounded-lg bg-slate-900/70 hover:bg-slate-900/90 border border-slate-700 px-3 py-2 text-xs">
+                Edit Arca
+              </button>
+            </div>
+            <div id="arcaNotesView" class="text-xs text-slate-200 mt-2 whitespace-pre-wrap max-h-20 overflow-y-auto"></div>
+          </div>
         </div>
-      </div>
-      <div id="people-content"></div>
-    </div>
+      </section>
 
-    <!-- Products Section -->
-    <div class="section" id="products-section">
-      <div class="section-header">Products</div>
-      <div class="toolbar">
-        <input type="search" id="products-search" placeholder="Search products..." aria-label="Search products">
-        <select id="products-filter" aria-label="Filter products by kind">
-          <option value="all">All Kinds</option>
-          <option value="Material">Material</option>
-          <option value="Labor">Labor</option>
-        </select>
-        <div class="view-toggle" id="products-view-toggle">
-          <button data-view="tile" class="active">Tile</button>
-          <button data-view="list">List</button>
-        </div>
+      <!-- Add item button -->
+      <div class="flex justify-end">
+        <button id="addItemBtn" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4 py-2">
+          + Add Item
+        </button>
       </div>
-      <div id="products-content"></div>
-    </div>
 
-    <!-- Dashboard Section -->
-    <div class="section" id="dashboard-section">
-      <div class="section-header">Dashboard</div>
-      <div class="detail-section">
-        <p>This area displays summary information, like counts of projects, documents, and more. It serves as a placeholder for future analytics.</p>
-        <div class="stats-row" id="dashboard-stats"></div>
-      </div>
-    </div>
+      <!-- Items (2-col on mobile, 3/4 on larger) -->
+      <section>
+        <div id="tiles" class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4"></div>
+      </section>
+    </section>
   </main>
 
-  <!-- Detail overlay -->
-  <div class="overlay" id="detail-overlay" aria-modal="true" role="dialog">
-    <div class="drawer" id="detail-drawer">
-      <button class="drawer-close" id="drawer-close" aria-label="Close details">×</button>
-      <div class="drawer-header" id="drawer-header"></div>
-      <div class="drawer-content" id="drawer-content"></div>
+  <!-- Confirm zero modal -->
+  <div id="confirmZero" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
+    <div class="glass rounded-2xl max-w-sm w-full p-4">
+      <h3 class="font-semibold mb-2">Remove from inventory?</h3>
+      <p class="text-sm text-slate-300">This sets quantity to 0 and hides the item. You can Undo right after.</p>
+      <div class="mt-4 flex justify-end gap-2">
+        <button id="czCancel" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Cancel</button>
+        <button id="czOk" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-3 py-2 text-sm">Yes</button>
+      </div>
     </div>
   </div>
 
-  <!-- Document preview overlay -->
-  <div class="preview-overlay" id="preview-overlay" aria-modal="true" role="dialog">
-    <div class="preview-content">
-      <div class="preview-header">
-        <h3 id="preview-title">Document Preview</h3>
+  <!-- Edit Arca Modal -->
+  <div id="arcaModal" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
+    <div class="glass rounded-2xl max-w-sm w-full p-4">
+      <h3 class="font-semibold mb-3">Edit Arca</h3>
+      <div class="grid gap-3">
         <div>
-          <button class="print-btn" id="print-btn">Print</button>
-          <button class="preview-close" id="preview-close" aria-label="Close preview">×</button>
+          <label class="text-xs block mb-1">Name</label>
+          <input id="arcaNameInput" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"/>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs block mb-1">Type</label>
+            <select id="arcaTypeInput" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none">
+              <option value="">—</option>
+              <option>Container</option>
+              <option>Drawer</option>
+              <option>Box</option>
+              <option>Shelf</option>
+              <option>Room</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs block mb-1">Location</label>
+            <input id="arcaLocInput" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"/>
+          </div>
+        </div>
+        <div>
+          <label class="text-xs block mb-1">Notes</label>
+          <textarea id="arcaNotesInput" rows="2" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"></textarea>
+        </div>
+        <div>
+          <label class="text-xs block mb-1">Replace Photo (optional)</label>
+          <input id="arcaPhotoInput" type="file" accept="image/*" capture="environment"
+                 class="w-full text-sm file:bg-slate-700 file:border-0 file:rounded-lg file:px-3 file:py-2"/>
         </div>
       </div>
-      <div class="preview-body" id="preview-body">
-        <!-- Document page goes here -->
+      <div class="mt-4 flex justify-end gap-2">
+        <button id="arcaCancel" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Cancel</button>
+        <button id="arcaSave" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-3 py-2 text-sm">Save</button>
       </div>
     </div>
   </div>
 
-  <!-- New Document Modal -->
-  <div class="modal-overlay" id="new-doc-modal" aria-modal="true" role="dialog" aria-labelledby="newDocTitle">
-    <div class="modal-content">
-      <h3 id="newDocTitle">Create New Document</h3>
-      <div style="margin-bottom:12px;">
-        <label for="doc-type-select" style="display:block;margin-bottom:4px;">Document Type</label>
-        <select id="doc-type-select" style="width:100%; padding:6px;">
-          <!-- options inserted dynamically -->
-        </select>
+  <!-- Photo / Note Modal (Item) -->
+  <div id="modal" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
+    <div class="glass rounded-2xl max-w-sm w-full p-4">
+      <h3 class="font-semibold mb-2">Add Photo / Note</h3>
+      <div class="space-y-3">
+        <input id="fileInput" type="file" accept="image/*" capture="environment"
+               class="w-full text-sm file:bg-slate-700 file:border-0 file:rounded-lg file:px-3 file:py-2"/>
+        <textarea id="noteInput" rows="2" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"
+                  placeholder="Note (optional)"></textarea>
       </div>
-      <div id="doc-name-container" style="margin-bottom:12px;">
-        <label for="doc-name-input" style="display:block;margin-bottom:4px;">Document Name</label>
-        <input type="text" id="doc-name-input" style="width:100%; padding:6px;">
-      </div>
-      <div id="doc-extra-container" style="margin-bottom:12px;"></div>
-      <div class="modal-actions">
-        <button id="cancel-doc-btn" style="padding:6px 12px;">Cancel</button>
-        <button id="create-doc-btn" style="padding:6px 12px; background-color:#234075; color:#fff; border:none; border-radius:4px;">Create</button>
+      <div class="mt-4 flex justify-end gap-2">
+        <button id="modalCancel" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Cancel</button>
+        <button id="modalOk" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-3 py-2 text-sm">Save</button>
       </div>
     </div>
   </div>
 
-  <!-- Proposal Wizard -->
-  <div class="wizard-overlay" id="proposal-wizard" aria-modal="true" role="dialog" aria-labelledby="proposalWizardTitle">
-    <div class="wizard-content">
-      <h3 id="proposalWizardTitle">Proposal Wizard</h3>
-      <p>Select products and enter quantities to include in the proposal.</p>
-      <table class="wizard-table" id="wizard-product-table">
-        <thead>
-          <tr><th>Name</th><th>Unit</th><th>Price</th><th>Quantity</th></tr>
-        </thead>
-        <tbody>
-          <!-- products inserted dynamically -->
-        </tbody>
-      </table>
-      <div class="wizard-summary" id="wizard-summary">
-        <!-- summary inserted dynamically -->
+  <!-- New Item Modal -->
+  <div id="newItemModal" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
+    <div class="glass rounded-2xl max-w-sm w-full p-4">
+      <h3 class="font-semibold mb-3">Add Item</h3>
+
+      <label class="text-xs block mb-1">Name</label>
+      <input id="newItemName" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none mb-3" placeholder="e.g., Pasta"/>
+
+      <div class="grid grid-cols-3 gap-2 items-end mb-3">
+        <div class="col-span-2">
+          <label class="text-xs block mb-1">Starting Quantity</label>
+          <input id="newItemQty" type="number" min="0" step="1"
+                 class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none" value="1"/>
+        </div>
+        <div class="flex gap-2">
+          <button data-q="1"  class="rounded-lg bg-slate-700 hover:bg-slate-600 px-2 py-1 text-xs">+1</button>
+          <button data-q="6"  class="rounded-lg bg-slate-700 hover:bg-slate-600 px-2 py-1 text-xs">+6</button>
+          <button data-q="12" class="rounded-lg bg-slate-700 hover:bg-slate-600 px-2 py-1 text-xs">+12</button>
+        </div>
       </div>
-      <div class="wizard-details" style="margin-top:18px; max-height:40vh; overflow-y:auto;">
-        <h4>Project Overview</h4>
-        <textarea id="proposal-overview" rows="3" style="width:100%; box-sizing:border-box;"></textarea>
-        <h4>Scope of Work</h4>
-        <textarea id="proposal-scope" rows="4" style="width:100%; box-sizing:border-box;"></textarea>
-        <h4>Inclusions &amp; Exclusions</h4>
-        <textarea id="proposal-inclusions" rows="3" style="width:100%; box-sizing:border-box;" placeholder="Includes:"></textarea>
-        <textarea id="proposal-exclusions" rows="3" style="width:100%; box-sizing:border-box;" placeholder="Excludes:"></textarea>
-        <h4>Payment Schedule (%)</h4>
-        <label>Deposit <input type="number" id="proposal-deposit" min="0" max="100" value="30" style="width:60px; margin-left:4px;"></label>
-        <label style="margin-left:20px;">Progress <input type="number" id="proposal-progress" min="0" max="100" value="40" style="width:60px; margin-left:4px;"></label>
-        <p style="font-size:0.85rem; margin-top:4px;">Balance will be computed automatically.</p>
-        <h4>Sales Tax (Materials)</h4>
-        <label>Tax Rate <input type="number" id="proposal-tax" min="0" max="100" step="0.1" value="5.5" style="width:80px; margin-left:4px;"></label>
-        <p style="font-size:0.85rem; margin-top:4px;">Enter a percentage (e.g., 5.5 for 5.5%). This tax will be applied to materials only.</p>
-        <h4>Schedule &amp; Access</h4>
-        <textarea id="proposal-schedule" rows="2" style="width:100%; box-sizing:border-box;"></textarea>
-        <h4>Warranty</h4>
-        <textarea id="proposal-warranty" rows="2" style="width:100%; box-sizing:border-box;"></textarea>
-        <h4>Terms &amp; Conditions</h4>
-        <textarea id="proposal-terms" rows="3" style="width:100%; box-sizing:border-box;"></textarea>
-      </div>
-      <div class="modal-actions">
-        <button id="cancel-wizard-btn" style="padding:6px 12px;">Cancel</button>
-        <button id="finish-wizard-btn" style="padding:6px 12px; background-color:#234075; color:#fff; border:none; border-radius:4px;">Create Proposal</button>
+
+      <label class="text-xs block mb-1">Photo (optional)</label>
+      <input id="newItemFile" type="file" accept="image/*" capture="environment"
+             class="w-full text-sm file:bg-slate-700 file:border-0 file:rounded-lg file:px-3 file:py-2 mb-3"/>
+
+      <label class="text-xs block mb-1">Note (optional)</label>
+      <textarea id="newItemNote" rows="2" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"
+                placeholder="Any details to remember..."></textarea>
+
+      <div class="mt-4 flex justify-end gap-2">
+        <button id="newItemCancel" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Cancel</button>
+        <button id="newItemSave" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-3 py-2 text-sm">Save</button>
       </div>
     </div>
   </div>
+
+  <!-- Toast -->
+  <div id="toast" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2">
+    <div id="toastInner" class="rounded-xl bg-slate-800 text-slate-100 px-3 py-2 text-sm shadow-lg">Saved</div>
+  </div>
+
+  <!-- Snackbar with Undo -->
+  <div id="snack" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2">
+    <div class="snackbar rounded-xl bg-slate-800 text-slate-100 px-3 py-2 text-sm shadow-lg flex items-center gap-3">
+      <span id="snackMsg">Hidden</span>
+      <button id="snackUndo" class="text-emerald-300 hover:text-emerald-200 font-semibold">Undo</button>
+    </div>
+  </div>
+
+  <!-- Firebase compat (DB only) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
-    // --- Application JS unchanged except for renderer functions ---
-    // Add your logic here (initData, state, etc.)
+    console.log("display • 2-col mobile grid • fixed boot & photo handler (vArcadash-4)");
 
-    // Renderer Example: Projects Section
-    function renderProjects() {
-      const container = document.getElementById('projects-content');
-      const { search, status } = state.filters.projects;
-      const view = state.viewModes.projects;
-      const projects = state.projects.filter(pr => {
-        const matchesSearch = pr.name.toLowerCase().includes(search.toLowerCase()) ||
-          (getPersonById(pr.clientId)?.name.toLowerCase().includes(search.toLowerCase()));
-        const matchesStatus = status === 'all' || pr.status === status;
-        return matchesSearch && matchesStatus;
+    // Firebase
+    var firebaseConfig = {
+      apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
+      authDomain: "tether-71e0c.firebaseapp.com",
+      databaseURL: "https://tether-71e0c-default-rtdb.firebaseio.com",
+      projectId: "tether-71e0c",
+      storageBucket: "tether-71e0c.appspot.com"
+    };
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.database();
+
+    // Helpers
+    function $(s){return document.querySelector(s)}
+    function show(el,on){el&&el.classList.toggle("hidden",!on)}
+    function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}
+    function setStatus(msg, ok){
+      var el=$("#status"); if(!msg){el.classList.add("hidden");return;}
+      el.textContent=msg; el.className= ok===false ? "hidden mb-1 text-sm text-red-300".replace("hidden","") : "hidden mb-1 text-sm text-emerald-300".replace("hidden","");
+    }
+    function toast(msg,bad){var t=$("#toast"),i=$("#toastInner"); if(!t||!i)return; i.textContent=msg||"Saved"; i.className="rounded-xl px-3 py-2 text-sm shadow-lg "+(bad?"bg-red-600 text-white":"bg-slate-800 text-slate-100"); t.classList.remove("hidden"); setTimeout(()=>t.classList.add("hidden"),1200)}
+    function fileToDataURL(file){return new Promise((res,rej)=>{if(!file){res(null);return;}var r=new FileReader(); r.onerror=rej; r.onload=()=>res(r.result); r.readAsDataURL(file);});}
+    function tx(ref, updater){
+      return new Promise((resolve,reject)=>{
+        ref.transaction(updater, (err, committed, snap)=>{
+          if (err || !committed) reject(err||new Error("Not committed"));
+          else resolve(snap);
+        });
       });
-      if (projects.length === 0) {
-        container.innerHTML = `<div class="empty">No projects match your criteria.</div>`;
+    }
+    function getParamCI(name) {
+      const qs = new URLSearchParams(location.search);
+      for (const [k, v] of qs.entries()) if (k.toLowerCase() === name.toLowerCase()) return v;
+      return null;
+    }
+
+    // ---- Arcadash (local pins) ----
+    function getPins(){ try { return JSON.parse(localStorage.getItem("arcaPins")||"[]"); } catch(e){ return []; } }
+    function setPins(pins){ localStorage.setItem("arcaPins", JSON.stringify([...new Set(pins)])); }
+    function isPinned(id){ return getPins().includes(id); }
+    function updatePinUI(){
+      var btn = $("#pinBtn");
+      if (!btn || !currentId) return;
+      btn.textContent = isPinned(currentId) ? "✓ In my Arcadash — Remove" : "+ Add to my Arcadash";
+    }
+    function togglePin(id){
+      if (!id) return;
+      let pins = getPins();
+      if (pins.includes(id)){
+        pins = pins.filter(x => x !== id);
+        toast("Removed from Arcadash");
+      } else {
+        pins.push(id);
+        toast("Added to Arcadash");
+      }
+      setPins(pins);
+      updatePinUI();
+    }
+    $("#pinBtn").addEventListener("click", ()=> togglePin(currentId));
+
+    // State
+    var currentId=null, arcaRef=null, itemsRef=null, items={};
+    var lastArchived=null, snackTimer=null, czTarget=null;
+    var currentArca={};
+
+    // Refs
+    var viewEnter=$("#viewEnter"), viewCreate=$("#viewCreate"), viewApp=$("#viewApp");
+    var idInput=$("#idInput"), openBtn=$("#openBtn");
+    var switchBtn=$("#switchBtn");
+    var newId=$("#newId"), newName=$("#newName"), newType=$("#newType"), newLoc=$("#newLoc"), newPhoto=$("#newPhoto"), newNotes=$("#newNotes");
+    var cancelCreate=$("#cancelCreate"), saveCreate=$("#saveCreate");
+
+    var arcaNameEl=$("#arcaName"), arcaMeta=$("#arcaMeta"), arcaHeroImg=$("#arcaHeroImg"), arcaHeroPh=$("#arcaHeroPh"), arcaNotesView=$("#arcaNotesView");
+    var editArcaBtn=$("#editArcaBtn");
+
+    var tiles=$("#tiles");
+    var addItemBtn=$("#addItemBtn");
+
+    var modal=$("#modal"), modalOk=$("#modalOk"), modalCancel=$("#modalCancel"), fileInput=$("#fileInput"), noteInput=$("#noteInput");
+    var cz=$("#confirmZero"), czOk=$("#czOk"), czCancel=$("#czCancel");
+
+    var arcaModal=$("#arcaModal"), arcaNameInput=$("#arcaNameInput"), arcaTypeInput=$("#arcaTypeInput"), arcaLocInput=$("#arcaLocInput"), arcaNotesInput=$("#arcaNotesInput"), arcaPhotoInput=$("#arcaPhotoInput");
+
+    var newItemModal=$("#newItemModal"), newItemName=$("#newItemName"), newItemQty=$("#newItemQty"), newItemFile=$("#newItemFile"), newItemNote=$("#newItemNote"), newItemSave=$("#newItemSave"), newItemCancel=$("#newItemCancel");
+
+    // Views
+    function showEnter(){ show(viewEnter,true); show(viewCreate,false); show(viewApp,false); setStatus("",true); idInput.focus(); }
+    function showCreate(id){ newId.value=id; newName.value=""; newType.value=""; newLoc.value=""; newNotes.value=""; newPhoto.value=""; show(viewEnter,false); show(viewCreate,true); show(viewApp,false); setStatus("ID not found. Create a new Arca?",true); }
+    function showApp(){ show(viewEnter,false); show(viewCreate,false); show(viewApp,true); setStatus("",true); }
+
+    // DB helpers
+    function checkExists(id){ return db.ref("arca/"+id).once("value").then(s=>!!s.val()); }
+    function createArcaObject(id, name, type, loc, notes, photoDataUrl){
+      var now=Date.now();
+      var obj = {name:name||id,type:type||"",location:loc||"",notes:notes||"",createdAt:now,lastUpdated:now};
+      if (photoDataUrl) obj.photo = { dataUrl: photoDataUrl, takenAt: now };
+      return obj;
+    }
+
+    // Init listeners
+    function initArca(id){
+      if (arcaRef) arcaRef.off();
+      if (itemsRef) itemsRef.off();
+      currentId=id;
+
+      arcaRef=db.ref("arca/"+id);
+      itemsRef=db.ref("arca/"+id+"/items");
+
+      arcaRef.on("value", s=>{
+        currentArca = s.val()||{};
+        var a=currentArca;
+        if (arcaNameEl) arcaNameEl.textContent=a.name||id;
+
+        var bits=[]; if(a.type) bits.push(a.type); if(a.location) bits.push(a.location);
+        if (arcaMeta) arcaMeta.textContent=bits.join(" • ");
+        if (arcaNotesView) arcaNotesView.textContent = a.notes || "";
+
+        if (a.photo && a.photo.dataUrl){
+          if (arcaHeroImg) { arcaHeroImg.src = a.photo.dataUrl; arcaHeroImg.classList.remove("hidden"); }
+          if (arcaHeroPh) arcaHeroPh.classList.add("hidden");
+        } else {
+          if (arcaHeroImg) { arcaHeroImg.src=""; arcaHeroImg.classList.add("hidden"); }
+          if (arcaHeroPh) arcaHeroPh.classList.remove("hidden");
+        }
+      });
+
+      itemsRef.on("value", s=>{
+        items=s.val()||{};
+        render();
+      });
+
+      showApp();
+      updatePinUI();
+    }
+
+    // Switch
+    switchBtn.addEventListener("click", ()=>{
+      idInput.value = "";
+      showEnter();
+    });
+
+    // Edit Arca
+    editArcaBtn.addEventListener("click", ()=>{
+      if (!currentId) return;
+      arcaNameInput.value = currentArca.name || currentId;
+      arcaTypeInput.value = currentArca.type || "";
+      arcaLocInput.value  = currentArca.location || "";
+      arcaNotesInput.value= currentArca.notes || "";
+      arcaPhotoInput.value = "";
+      arcaModal.classList.remove("hidden"); arcaModal.classList.add("flex");
+    });
+    $("#arcaCancel").addEventListener("click", ()=>{
+      arcaModal.classList.add("hidden"); arcaModal.classList.remove("flex");
+    });
+    $("#arcaSave").addEventListener("click", async ()=>{
+      if (!currentId) return;
+      var name = (arcaNameInput.value||"").trim() || currentId;
+      var type = arcaTypeInput.value || "";
+      var loc  = arcaLocInput.value || "";
+      var notes= arcaNotesInput.value || "";
+      var file = arcaPhotoInput.files && arcaPhotoInput.files[0] ? arcaPhotoInput.files[0] : null;
+
+      var updates = { name, type, location: loc, notes, lastUpdated: Date.now() };
+      try {
+        if (file){
+          var dataUrl = await fileToDataURL(file);
+          updates.photo = { dataUrl: dataUrl, takenAt: Date.now() };
+        }
+        await db.ref("arca/"+currentId).update(updates);
+        toast("Arca updated");
+      } catch(e){
+        console.error(e); toast("Update failed", true);
+      } finally {
+        arcaModal.classList.add("hidden"); arcaModal.classList.remove("flex");
+      }
+    });
+
+    // Landing open flow
+    openBtn.addEventListener("click", ()=>{
+      var id=(idInput.value||"").trim();
+      if(!id){ setStatus("Please enter an ID.", false); return; }
+      setStatus("Looking up "+id+" …", true);
+      checkExists(id).then(exists=>{
+        if (exists) initArca(id);
+        else showCreate(id);
+      }).catch(e=> setStatus("Error: "+(e&&e.message||e), false));
+    });
+    idInput.addEventListener("keydown", e=>{ if(e.key==="Enter") openBtn.click(); });
+
+    // Create form
+    cancelCreate.addEventListener("click", ()=> showEnter());
+    saveCreate.addEventListener("click", async ()=>{
+      var id=newId.value, name=(newName.value||"").trim()||id, type=newType.value||"", loc=newLoc.value||"", notes=newNotes.value||"";
+      saveCreate.disabled=true; saveCreate.textContent="Creating…";
+      try{
+        var photoDataUrl = null;
+        if (newPhoto.files && newPhoto.files[0]) photoDataUrl = await fileToDataURL(newPhoto.files[0]);
+        var exists = await checkExists(id);
+        if (exists){ setStatus("That ID was just created. Opening…", true); initArca(id); return; }
+        await db.ref("arca/"+id).set(createArcaObject(id, name, type, loc, notes, photoDataUrl));
+        setStatus("Created ✓", true); initArca(id);
+      }catch(e){
+        console.error(e); setStatus("Create failed: "+(e&&e.message||e), false);
+      }finally{
+        saveCreate.disabled=false; saveCreate.textContent="Create";
+      }
+    });
+
+    // Rendering (items) — 2-col mobile tiles
+    function notePreview(t){ if(!t) return ""; var line=String(t).replace(/\r/g,"").split("\n").slice(-1)[0]||""; if(line.length>60) line=line.slice(0,60)+"…"; return line; }
+    function firstImage(it){ if(!it||!it.images||!it.images.length) return ""; var im=it.images[0]; return im.dataUrl||im.url||""; }
+
+    function buildTile(id,it){
+      if (it.archived) return null;
+      var qty = Number(it.qty || 0);
+      var imgSrc=firstImage(it);
+      var d=document.createElement("div");
+      d.className="glass rounded-2xl p-2 relative";
+      d.setAttribute("data-tile", id);
+      d.setAttribute("data-qty", String(qty));
+
+      var h='';
+      h+='<div class="w-full aspect-square rounded-lg bg-slate-800/80 border border-slate-700 overflow-hidden mb-2">';
+      h+= imgSrc ? '<img src="'+imgSrc+'" class="w-full h-full object-cover" alt="">' : '<div class="w-full h-full flex items-center justify-center text-[11px] text-slate-500">No Photo</div>';
+      h+='</div>';
+      h+='<div class="text-sm font-semibold truncate-1">'+esc(it.name||"Unnamed")+'</div>';
+      var np=notePreview(it.notes); if(np){ h+='<div class="text-[11px] text-slate-300 truncate-1">'+esc(np)+'</div>'; }
+      h+='<div class="mt-2 grid grid-cols-3 items-center gap-2">';
+      h+='  <button data-act="minus" data-id="'+id+'" class="rounded-lg bg-slate-700 hover:bg-slate-600 px-0 py-2 text-base">-</button>';
+      h+='  <div class="text-center text-sm"><span class="text-slate-400">Qty</span> <span class="font-mono">'+qty+'</span></div>';
+      h+='  <button data-act="plus"  data-id="'+id+'" class="rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-0 py-2 text-base">+</button>';
+      h+='</div>';
+      h+='<div class="mt-2"><button data-act="photo" data-id="'+id+'" class="w-full rounded-lg bg-slate-700 hover:bg-slate-600 px-2 py-2 text-xs">Photo / Note</button></div>';
+
+      d.innerHTML=h;
+      return d;
+    }
+
+    function render(){
+      tiles.innerHTML="";
+      var ids=Object.keys(items);
+      if(ids.length===0){
+        tiles.innerHTML='<div class="glass p-3 rounded-2xl text-sm text-slate-300 col-span-2">No items yet. Tap “+ Add Item”.</div>';
         return;
       }
-      if (view === 'tile') {
-        let html = '<div class="tile-container">';
-        projects.forEach(pr => {
-          const person = getPersonById(pr.clientId);
-          html += `
-            <div class="tile" tabindex="0">
-              <div class="status-pill">${pr.status}</div>
-              <img class="avatar" src="https://ui-avatars.com/api/?name=${encodeURIComponent(person.name)}&background=234075&color=fff" alt="${escapeHtml(person.name)}" />
-              <div class="title">${escapeHtml(pr.name)}</div>
-              <div class="subtext">${escapeHtml(person.name)} &bull; ${escapeHtml(pr.city)}, ${escapeHtml(pr.state)}</div>
-              <div class="amount">${formatCurrency(pr.amount)}</div>
-              <div class="subtext">${escapeHtml(pr.description)}</div>
-            </div>
-          `;
-        });
-        html += '</div>';
-        container.innerHTML = html;
-      } else {
-        // List view
-        let html = `<table class="list-table"><thead>
-          <tr><th>Project</th><th>Client</th><th>Status</th><th>Amount</th><th>Location</th></tr>
-        </thead><tbody>`;
-        projects.forEach(pr => {
-          const person = getPersonById(pr.clientId);
-          html += `<tr>
-            <td>${escapeHtml(pr.name)}</td>
-            <td>${escapeHtml(person.name)}</td>
-            <td>${pr.status}</td>
-            <td>${formatCurrency(pr.amount)}</td>
-            <td>${escapeHtml(pr.city)}, ${escapeHtml(pr.state)}</td>
-          </tr>`;
-        });
-        html += '</tbody></table>';
-        container.innerHTML = html;
-      }
+      ids.forEach(id=>{
+        var el = buildTile(id, items[id]||{});
+        if (el) tiles.appendChild(el);
+      });
     }
 
-    // Renderer Example: Dashboard Stats
-    function renderDashboard() {
-      const stats = [
-        { icon: "📁", title: "Projects", value: state.projects.length },
-        { icon: "👥", title: "People", value: state.people.length },
-        { icon: "🛠️", title: "Products", value: state.products.length },
-        { icon: "📄", title: "Documents", value: state.projects.reduce((sum, p) => sum + (p.documents?.length || 0), 0) }
-      ];
-      const statsRow = document.getElementById('dashboard-stats');
-      statsRow.innerHTML = stats.map(s => `
-        <div class="stat-card">
-          <div class="stat-icon">${s.icon}</div>
-          <div class="stat-title">${s.title}</div>
-          <div class="stat-value">${s.value}</div>
-        </div>
-      `).join('');
-    }
+    // Delegated tile actions
+    tiles.addEventListener("click", function(e){
+      var btn = e.target.closest("button[data-act]");
+      if (!btn) return;
+      var id = btn.getAttribute("data-id");
+      var act = btn.getAttribute("data-act");
+      if (act === "minus") onMinusClick(btn, id);
+      else if (act === "plus") onPlusClick(id);
+      else if (act === "photo") openModal(id);
+    });
 
-    // Renderer Example: People Section (avatars, cards)
-    function renderPeople() {
-      const container = document.getElementById('people-content');
-      const { search, type } = state.filters.people;
-      const view = state.viewModes.people;
-      const people = state.people.filter(p =>
-        (type === 'all' || p.type === type) &&
-        (p.name.toLowerCase().includes(search.toLowerCase()) || p.email.toLowerCase().includes(search.toLowerCase()))
-      );
-      if (people.length === 0) {
-        container.innerHTML = `<div class="empty">No people match your criteria.</div>`;
+    // Minus → confirm at zero using DOM's displayed qty
+    function onMinusClick(btn, itemId){
+      var tile = btn.closest("[data-tile]");
+      var shownQty = Number(tile?.getAttribute("data-qty") || "0");
+      if (shownQty <= 1) {
+        czTarget = itemId;
+        cz.classList.remove("hidden"); cz.classList.add("flex");
         return;
       }
-      if (view === 'tile') {
-        let html = '<div class="tile-container">';
-        people.forEach(p => {
-          html += `
-            <div class="tile" tabindex="0">
-              <img class="avatar" src="https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=476db5&color=fff" alt="${escapeHtml(p.name)}"/>
-              <div class="title">${escapeHtml(p.name)}</div>
-              <div class="subtext">${p.type} &bull; ${escapeHtml(p.city)}, ${escapeHtml(p.state)}</div>
-              <div class="subtext"><a href="mailto:${escapeHtml(p.email)}">${escapeHtml(p.email)}</a></div>
-              <div class="subtext">${escapeHtml(p.phone)}</div>
-            </div>
-          `;
-        });
-        html += '</div>';
-        container.innerHTML = html;
-      } else {
-        // List view
-        let html = `<table class="list-table"><thead>
-          <tr><th>Name</th><th>Type</th><th>Email</th><th>Phone</th><th>Location</th></tr>
-        </thead><tbody>`;
-        people.forEach(p => {
-          html += `<tr>
-            <td>${escapeHtml(p.name)}</td>
-            <td>${p.type}</td>
-            <td><a href="mailto:${escapeHtml(p.email)}">${escapeHtml(p.email)}</a></td>
-            <td>${escapeHtml(p.phone)}</td>
-            <td>${escapeHtml(p.city)}, ${escapeHtml(p.state)}</td>
-          </tr>`;
-        });
-        html += '</tbody></table>';
-        container.innerHTML = html;
-      }
+      var qtyRef = db.ref("arca/"+currentId+"/items/"+itemId+"/qty");
+      qtyRef.transaction(function(cur){ var n=(cur||0)-1; return n<0?0:n; }, function(err){
+        if(err){ console.error(err); toast("Error updating qty", true); }
+        else db.ref("arca/"+currentId+"/items/"+itemId).update({ lastUpdated: Date.now() }).then(()=>toast("-1"));
+      });
     }
 
-    // Renderer Example: Products Section (icons, cards)
-    function renderProducts() {
-      const container = document.getElementById('products-content');
-      const { search, kind } = state.filters.products;
-      const view = state.viewModes.products;
-      const products = state.products.filter(p =>
-        (kind === 'all' || p.kind === kind) &&
-        (p.name.toLowerCase().includes(search.toLowerCase()))
-      );
-      if (products.length === 0) {
-        container.innerHTML = `<div class="empty">No products match your criteria.</div>`;
-        return;
-      }
-      if (view === 'tile') {
-        let html = '<div class="tile-container">';
-        products.forEach(p => {
-          html += `
-            <div class="tile" tabindex="0">
-              <div class="avatar" style="background: #e1e5ee; display:flex; align-items:center; justify-content:center;">
-                ${p.kind === 'Material' ? '🧱' : '🧑‍🔧'}
-              </div>
-              <div class="title">${escapeHtml(p.name)}</div>
-              <div class="subtext">${p.kind} &bull; ${escapeHtml(p.unit)}</div>
-              <div class="amount">${formatCurrency(p.price)} / ${escapeHtml(p.unit)}</div>
-            </div>
-          `;
+    // Confirm-zero: snapshot → archive → snackbar with backup
+    document.getElementById("czCancel").addEventListener("click", ()=>{
+      cz.classList.add("hidden"); cz.classList.remove("flex"); czTarget=null;
+    });
+    document.getElementById("czOk").addEventListener("click", async ()=>{
+      if (!czTarget) return;
+      var ref = db.ref("arca/"+currentId+"/items/"+czTarget);
+      try {
+        var snap = await ref.once("value");   // backup
+        var backup = snap.val() || {};
+        await tx(ref, function(cur){          // archive
+          var it = cur || {};
+          var now = Date.now();
+          it.qty = 0; it.archived = true; it.archivedAt = now; it.lastUpdated = now;
+          return it;
         });
-        html += '</div>';
-        container.innerHTML = html;
-      } else {
-        // List view
-        let html = `<table class="list-table"><thead>
-          <tr><th>Name</th><th>Kind</th><th>Unit</th><th>Price</th></tr>
-        </thead><tbody>`;
-        products.forEach(p => {
-          html += `<tr>
-            <td>${escapeHtml(p.name)}</td>
-            <td>${escapeHtml(p.kind)}</td>
-            <td>${escapeHtml(p.unit)}</td>
-            <td>${formatCurrency(p.price)}</td>
-          </tr>`;
-        });
-        html += '</tbody></table>';
-        container.innerHTML = html;
+        showSnack("Hidden", { arcaId: currentId, itemId: czTarget, backup: backup });
+      } catch(e){
+        console.error(e); toast("Error updating qty", true);
+      } finally {
+        cz.classList.add("hidden"); cz.classList.remove("flex"); czTarget=null;
       }
+    });
+
+    // Plus (also unhide if needed)
+    function onPlusClick(itemId){
+      var qtyRef = db.ref("arca/"+currentId+"/items/"+itemId+"/qty");
+      qtyRef.transaction(function(cur){ return (cur||0)+1; }, function(err){
+        if(err){ console.error(err); toast("Error updating qty", true); }
+        else {
+          db.ref("arca/"+currentId+"/items/"+itemId).update({ archived:false, archivedAt:null, lastUpdated: Date.now() });
+          toast("+1");
+        }
+      });
     }
 
-    // --- Your existing JS logic for switching tabs, etc, remains unchanged ---
-    // (You may want to update toolbar and section renderers in similar style!)
+    // Snackbar / Undo (restore full backup)
+    function showSnack(message, payload){
+      $("#snackMsg").textContent = message || "Hidden";
+      lastArchived = payload || null;
+      var s=$("#snack"); s.classList.remove("hidden");
+      if (snackTimer) clearTimeout(snackTimer);
+      snackTimer = setTimeout(function(){ s.classList.add("hidden"); lastArchived=null; }, 4000);
+    }
+    document.getElementById("snackUndo").addEventListener("click", async function(){
+      var s=$("#snack"); if(!lastArchived) return s.classList.add("hidden");
+      try{
+        var ar=lastArchived;
+        var ref = db.ref("arca/"+ar.arcaId+"/items/"+ar.itemId);
+        var obj = Object.assign({}, ar.backup || {}, {
+          qty: Math.max(1, (ar.backup && ar.backup.qty) || 1),
+          archived: false,
+          archivedAt: null,
+          lastUpdated: Date.now()
+        });
+        await ref.set(obj);
+        toast("Restored");
+      }catch(e){
+        console.error(e); toast("Undo failed", true);
+      }finally{
+        s.classList.add("hidden"); lastArchived=null;
+        if (snackTimer) clearTimeout(snackTimer);
+      }
+    });
 
-    // ... The rest of your JS logic ...
+    // Photo/Note modal (Item) — single correct handler
+    function openModal(itemId){
+      modal.setAttribute("data-item-id", itemId);
+      fileInput.value=""; noteInput.value="";
+      modal.classList.remove("hidden"); modal.classList.add("flex");
+    }
+    modalCancel.addEventListener("click", ()=>{ modal.classList.add("hidden"); modal.classList.remove("flex"); });
+    modalOk.addEventListener("click", async function(){
+      var id=modal.getAttribute("data-item-id");
+      var f=(fileInput.files&&fileInput.files[0])?fileInput.files[0]:null;
+      var note=(noteInput.value||"").trim();
+      modalOk.disabled=true; modalOk.textContent="Saving…";
+      try{
+        if (note){
+          await db.ref("arca/"+currentId+"/items/"+id+"/notes").transaction(prev=>{
+            prev=prev||""; return prev ? (prev+"\n"+note) : note;
+          });
+        }
+        if (f){
+          const dataUrl = await fileToDataURL(f);
+          await db.ref("arca/"+currentId+"/items/"+id+"/images").transaction(arr=>{
+            arr = Array.isArray(arr) ? arr : [];
+            arr.unshift({ dataUrl, takenAt: Date.now() });
+            return arr.slice(0, 6);
+          });
+        }
+        toast("Saved");
+      } catch(e){ console.error(e); toast("Save failed", true); }
+      finally { modalOk.disabled=false; modalOk.textContent="Save"; modal.classList.add("hidden"); modal.classList.remove("flex"); }
+    });
+
+    // New item
+    document.getElementById("addItemBtn").addEventListener("click", function(){
+      newItemName.value=""; newItemQty.value="1"; newItemFile.value=""; newItemNote.value="";
+      newItemModal.classList.remove("hidden"); newItemModal.classList.add("flex");
+      setTimeout(()=> newItemName.focus(), 30);
+    });
+    newItemCancel.addEventListener("click", ()=>{ newItemModal.classList.add("hidden"); newItemModal.classList.remove("flex"); });
+    Array.prototype.forEach.call(newItemModal.querySelectorAll('button[data-q]'), function(b){
+      b.addEventListener("click", function(ev){
+        var add=parseInt(ev.currentTarget.getAttribute("data-q"),10)||0;
+        var cur=parseInt(newItemQty.value||"0",10)||0;
+        newItemQty.value=String(cur+add);
+      });
+    });
+    newItemSave.addEventListener("click", function(){
+      var name=(newItemName.value||"").trim();
+      var qty=Math.max(0, parseInt(newItemQty.value||"0",10)||0);
+      var f=(newItemFile.files&&newItemFile.files[0])?newItemFile.files[0]:null;
+      var note=(newItemNote.value||"").trim();
+      if(!name){ toast("Name is required",true); return; }
+      var now=Date.now(), newId="item-"+now+"-"+Math.floor(Math.random()*100000);
+      var chain=Promise.resolve(), images=[];
+      if(f){ chain=chain.then(()=> fileToDataURL(f)).then(d=> images=[{dataUrl:d,takenAt:now}]); }
+      chain.then(()=> db.ref("arca/"+currentId+"/items/"+newId).set({
+        name:name, qty:qty, images:images, notes:note||"", archived:false, archivedAt:null, createdAt:now, lastUpdated:now
+      })).then(()=>{ newItemModal.classList.add("hidden"); newItemModal.classList.remove("flex"); toast("Item saved"); })
+        .catch(e=>{ console.error(e); toast("Error saving item",true); });
+    });
+
+    // ---- Boot (deep-link) ----
+    document.addEventListener("DOMContentLoaded", () => {
+      try {
+        let id = (getParamCI("arcaId") || getParamCI("id") || "").trim();
+        console.log("Boot arcaId =", id || "(none)");
+        if (!id) { showEnter(); return; }
+        setStatus("Checking " + id + " …", true);
+        checkExists(id).then(exists => {
+          if (exists) initArca(id);
+          else showCreate(id);
+        }).catch(err => {
+          console.error(err);
+          setStatus("Error: " + (err && err.message || err), false);
+          showEnter();
+        });
+      } catch (e) {
+        console.error("Boot failed:", e);
+        showEnter();
+      }
+    });
   </script>
 </body>
 </html>
