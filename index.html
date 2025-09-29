@@ -514,8 +514,65 @@
   </div>
 
   <script>
-    // --- Application JS unchanged except for renderer functions ---
-    // Add your logic here (initData, state, etc.)
+    // Application State
+    let state = {
+      currentTab: 'projects',
+      projects: [],
+      people: [],
+      products: [],
+      viewModes: {
+        projects: 'tile',
+        people: 'tile',
+        products: 'tile'
+      },
+      filters: {
+        projects: { search: '', status: 'all' },
+        people: { search: '', type: 'all' },
+        products: { search: '', kind: 'all' }
+      }
+    };
+
+    // Helper Functions
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function formatCurrency(amount) {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD'
+      }).format(amount);
+    }
+
+    function getPersonById(id) {
+      return state.people.find(p => p.id === id);
+    }
+
+    // Initialize Sample Data
+    function initData() {
+      state.people = [
+        { id: 1, name: 'John Smith', type: 'Client', email: 'john@example.com', phone: '(555) 123-4567', city: 'Austin', state: 'TX' },
+        { id: 2, name: 'Sarah Johnson', type: 'Contractor', email: 'sarah@contractor.com', phone: '(555) 234-5678', city: 'Dallas', state: 'TX' },
+        { id: 3, name: 'Mike Wilson', type: 'Vendor', email: 'mike@vendor.com', phone: '(555) 345-6789', city: 'Houston', state: 'TX' },
+        { id: 4, name: 'Lisa Brown', type: 'Subcontractor', email: 'lisa@sub.com', phone: '(555) 456-7890', city: 'San Antonio', state: 'TX' }
+      ];
+
+      state.projects = [
+        { id: 1, name: 'Kitchen Remodel', clientId: 1, status: 'In Progress', amount: 25000, city: 'Austin', state: 'TX', description: 'Complete kitchen renovation with new appliances' },
+        { id: 2, name: 'Bathroom Addition', clientId: 2, status: 'Planned', amount: 15000, city: 'Dallas', state: 'TX', description: 'Add master bathroom to existing home' },
+        { id: 3, name: 'Deck Construction', clientId: 3, status: 'Completed', amount: 8000, city: 'Houston', state: 'TX', description: 'Build composite deck with railing' },
+        { id: 4, name: 'Roof Replacement', clientId: 4, status: 'In Progress', amount: 12000, city: 'San Antonio', state: 'TX', description: 'Replace asphalt shingles' }
+      ];
+
+      state.products = [
+        { id: 1, name: 'Hardwood Flooring', kind: 'Material', unit: 'sq ft', price: 8.50 },
+        { id: 2, name: 'Skilled Labor', kind: 'Labor', unit: 'hour', price: 65.00 },
+        { id: 3, name: 'Ceramic Tile', kind: 'Material', unit: 'sq ft', price: 4.25 },
+        { id: 4, name: 'Electrical Work', kind: 'Labor', unit: 'hour', price: 75.00 }
+      ];
+    }
 
     // Renderer Example: Projects Section
     function renderProjects() {
@@ -680,6 +737,174 @@
         container.innerHTML = html;
       }
     }
+
+    // Tab Management
+    function switchTab(tabName) {
+      // Update navigation
+      document.querySelectorAll('.navbar li').forEach(li => {
+        li.classList.remove('active');
+        if (li.dataset.tab === tabName) {
+          li.classList.add('active');
+        }
+      });
+
+      // Update sections
+      document.querySelectorAll('.section').forEach(section => {
+        section.classList.remove('active');
+        if (section.id === `${tabName}-section`) {
+          section.classList.add('active');
+        }
+      });
+
+      state.currentTab = tabName;
+      renderCurrentSection();
+    }
+
+    // Render Current Section
+    function renderCurrentSection() {
+      switch (state.currentTab) {
+        case 'projects':
+          renderProjects();
+          break;
+        case 'people':
+          renderPeople();
+          break;
+        case 'products':
+          renderProducts();
+          break;
+        case 'dashboard':
+          renderDashboard();
+          break;
+      }
+    }
+
+    // Event Listeners
+    function initEventListeners() {
+      // Tab navigation
+      document.querySelectorAll('.navbar li[data-tab]').forEach(li => {
+        li.addEventListener('click', () => {
+          switchTab(li.dataset.tab);
+        });
+      });
+
+      // Projects search and filters
+      const projectsSearch = document.getElementById('projects-search');
+      const projectsFilter = document.getElementById('projects-filter');
+      const projectsViewToggle = document.getElementById('projects-view-toggle');
+
+      if (projectsSearch) {
+        projectsSearch.addEventListener('input', (e) => {
+          state.filters.projects.search = e.target.value;
+          renderProjects();
+        });
+      }
+
+      if (projectsFilter) {
+        projectsFilter.addEventListener('change', (e) => {
+          state.filters.projects.status = e.target.value;
+          renderProjects();
+        });
+      }
+
+      if (projectsViewToggle) {
+        projectsViewToggle.addEventListener('click', (e) => {
+          if (e.target.dataset.view) {
+            state.viewModes.projects = e.target.dataset.view;
+            projectsViewToggle.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+            e.target.classList.add('active');
+            renderProjects();
+          }
+        });
+      }
+
+      // People search and filters
+      const peopleSearch = document.getElementById('people-search');
+      const peopleFilter = document.getElementById('people-filter');
+      const peopleViewToggle = document.getElementById('people-view-toggle');
+
+      if (peopleSearch) {
+        peopleSearch.addEventListener('input', (e) => {
+          state.filters.people.search = e.target.value;
+          renderPeople();
+        });
+      }
+
+      if (peopleFilter) {
+        peopleFilter.addEventListener('change', (e) => {
+          state.filters.people.type = e.target.value;
+          renderPeople();
+        });
+      }
+
+      if (peopleViewToggle) {
+        peopleViewToggle.addEventListener('click', (e) => {
+          if (e.target.dataset.view) {
+            state.viewModes.people = e.target.dataset.view;
+            peopleViewToggle.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+            e.target.classList.add('active');
+            renderPeople();
+          }
+        });
+      }
+
+      // Products search and filters
+      const productsSearch = document.getElementById('products-search');
+      const productsFilter = document.getElementById('products-filter');
+      const productsViewToggle = document.getElementById('products-view-toggle');
+
+      if (productsSearch) {
+        productsSearch.addEventListener('input', (e) => {
+          state.filters.products.search = e.target.value;
+          renderProducts();
+        });
+      }
+
+      if (productsFilter) {
+        productsFilter.addEventListener('change', (e) => {
+          state.filters.products.kind = e.target.value;
+          renderProducts();
+        });
+      }
+
+      if (productsViewToggle) {
+        productsViewToggle.addEventListener('click', (e) => {
+          if (e.target.dataset.view) {
+            state.viewModes.products = e.target.dataset.view;
+            productsViewToggle.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+            e.target.classList.add('active');
+            renderProducts();
+          }
+        });
+      }
+
+      // Close overlays on clicking outside or escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeAllOverlays();
+        }
+      });
+
+      document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('overlay')) {
+          closeAllOverlays();
+        }
+      });
+    }
+
+    // Close overlays helper
+    function closeAllOverlays() {
+      document.querySelectorAll('.overlay, .modal-overlay, .wizard-overlay, .preview-overlay').forEach(overlay => {
+        overlay.classList.remove('show');
+      });
+      document.body.classList.remove('modal-open');
+    }
+
+    // Initialize Application
+    document.addEventListener('DOMContentLoaded', () => {
+      initData();
+      initEventListeners();
+      renderCurrentSection(); // Render initial Projects view
+    });
 
     // --- Your existing JS logic for switching tabs, etc, remains unchanged ---
     // (You may want to update toolbar and section renderers in similar style!)
