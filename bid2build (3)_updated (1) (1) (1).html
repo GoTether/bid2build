@@ -1,0 +1,2653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>bid2build</title>
+  <style>
+    /* Reset and base styles */
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+      color: #333;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+    a {
+      color: #0066cc;
+      text-decoration: none;
+    }
+    a:hover, a:focus {
+      text-decoration: underline;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin: 0;
+      font-weight: 600;
+    }
+
+    /* Navigation bar */
+    .navbar {
+      background-color: #234075; /* dark blue */
+      color: #fff;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      height: 60px;
+      flex-shrink: 0;
+    }
+    .navbar .title {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    .navbar nav {
+      margin-left: auto;
+    }
+    .navbar ul {
+      display: flex;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .navbar li {
+      margin-left: 12px;
+      padding: 8px 14px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    .navbar li.active, .navbar li:hover {
+      background-color: #476db5;
+    }
+
+    /* Content wrapper */
+    #main {
+      flex: 1;
+      overflow-y: auto;
+      background-color: #f7f8fc;
+    }
+    .section {
+      display: none;
+      padding: 24px;
+    }
+    .section.active {
+      display: block;
+    }
+    /* Toolbar within sections */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .toolbar input[type="search"] {
+      flex: 1;
+      min-width: 200px;
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    .toolbar select, .toolbar .view-toggle button {
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      background-color: #fff;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .toolbar .view-toggle button.active {
+      background-color: #476db5;
+      color: #fff;
+      border-color: #476db5;
+    }
+    .toolbar .view-toggle {
+      display: flex;
+      gap: 4px;
+    }
+
+    /* Tile view styles */
+    .tile-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .tile {
+      background-color: #fff;
+      border: 1px solid #e1e5ee;
+      border-radius: 8px;
+      padding: 16px;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      transition: box-shadow 0.2s;
+    }
+    .tile:hover {
+      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+    }
+    .tile .title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .tile .subtext {
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    /* List view styles */
+    table.list-table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: #fff;
+      border: 1px solid #e1e5ee;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    table.list-table thead th {
+      background-color: #f1f3f8;
+      text-align: left;
+      font-weight: 600;
+      padding: 10px;
+      font-size: 0.9rem;
+    }
+    table.list-table tbody td {
+      padding: 12px 10px;
+      border-top: 1px solid #e1e5ee;
+      font-size: 0.9rem;
+    }
+    table.list-table tbody tr {
+      cursor: pointer;
+    }
+    table.list-table tbody tr:hover {
+      background-color: #f9fbff;
+    }
+
+    /* Overlay (detail drawer) */
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.4);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .overlay.show {
+      display: flex;
+    }
+    .overlay .drawer {
+      /* Right-side sliding drawer */
+      position: absolute;
+      top: 0;
+      right: 0;
+      height: 100%;
+      width: 100%;
+      max-width: 640px;
+      min-width: 480px;
+      background-color: #fff;
+      box-shadow: -2px 0 8px rgba(0,0,0,0.3);
+      overflow-y: auto;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    /* Slide in when open */
+    .overlay.show .drawer.open {
+      transform: translateX(0);
+    }
+    @media (max-width: 600px) {
+      .overlay .drawer {
+        max-width: none;
+        min-width: 0;
+        width: 100%;
+      }
+    }
+    .drawer-header {
+      position: sticky;
+      top: 0;
+      background-color: #fff;
+      padding: 16px 24px;
+      border-bottom: 1px solid #e1e5ee;
+      z-index: 10;
+    }
+    .drawer-header h2 {
+      /* Larger heading for detail titles */
+      font-size: 2rem;
+      margin-bottom: 4px;
+    }
+    .drawer-header .subline {
+      color: #555;
+      font-size: 1rem;
+    }
+    .drawer-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: none;
+      border: none;
+      font-size: 1.8rem;
+      cursor: pointer;
+      color: #888;
+      /* Larger hit area for accessibility */
+      min-width: 40px;
+      min-height: 40px;
+    }
+    .drawer-close:hover { color: #000; }
+
+    /* Highlight selected list/tile item when drawer opens */
+    .selected {
+      outline: 2px solid #234075;
+      box-shadow: 0 0 4px #234075;
+    }
+    /* Lock body scroll when drawer is open */
+    .modal-open {
+      position: fixed;
+      overflow-y: hidden;
+      width: 100%;
+    }
+
+    .drawer-content {
+      padding: 16px 24px 40px;
+    }
+    .detail-section {
+      margin-bottom: 24px;
+    }
+    .detail-section h3 {
+      margin-bottom: 8px;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #234075;
+    }
+    .detail-info {
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    .detail-info a {
+      margin-right: 12px;
+      display: inline-block;
+    }
+
+    /* Tabs within details */
+    .detail-tabs {
+      display: flex;
+      border-bottom: 1px solid #e1e5ee;
+      margin-bottom: 16px;
+    }
+    .detail-tabs button {
+      padding: 10px 20px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 1rem;
+      color: #555;
+      border-bottom: 3px solid transparent;
+    }
+    .detail-tabs button.active {
+      color: #234075;
+      font-weight: 600;
+      border-bottom-color: #234075;
+    }
+
+    /* Document list styles */
+    .doc-list {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .doc-list th, .doc-list td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #e1e5ee;
+      font-size: 0.9rem;
+    }
+    .doc-list th {
+      background-color: #f1f3f8;
+      font-weight: 600;
+    }
+    .doc-list tr:hover {
+      background-color: #f9fbff;
+    }
+    .doc-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .doc-actions button {
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #234075;
+      padding: 2px 4px;
+    }
+    .doc-actions button:hover {
+      text-decoration: underline;
+    }
+    .add-doc-btn {
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      background-color: #234075;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .add-doc-btn:hover {
+      background-color: #476db5;
+    }
+
+    /* Document preview overlay */
+    .preview-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1100;
+    }
+    .preview-overlay.show {
+      display: flex;
+    }
+    .preview-content {
+      background-color: #fff;
+      width: 90%;
+      height: 90%;
+      display: flex;
+      flex-direction: column;
+      border-radius: 8px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      overflow: hidden;
+      position: relative;
+    }
+    .preview-header {
+      padding: 12px 20px;
+      background-color: #f1f3f8;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .preview-header h3 {
+      margin: 0;
+      font-size: 1.2rem;
+      color: #234075;
+    }
+    .preview-body {
+      flex: 1;
+      overflow: auto;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .doc-page {
+      width: 8.5in;
+      min-height: 11in;
+      padding: 1in;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+      background-color: #fff;
+      position: relative;
+      color: #333;
+      font-size: 12pt;
+    }
+    .doc-page h1 {
+      font-size: 28pt;
+      margin-bottom: 12px;
+    }
+    .doc-page h2 {
+      font-size: 20pt;
+      margin: 20px 0 10px;
+    }
+    .doc-page table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11pt;
+    }
+    .doc-page table th, .doc-page table td {
+      border: 1px solid #ccc;
+      padding: 6px;
+    }
+    .doc-page table th {
+      background-color: #f5f5f5;
+    }
+    .doc-page .totals {
+      margin-top: 12px;
+      text-align: right;
+      font-size: 12pt;
+    }
+    .preview-close {
+      background: none;
+      border: none;
+      font-size: 1.4rem;
+      cursor: pointer;
+      color: #555;
+    }
+    .preview-close:hover { color: #000; }
+    .print-btn {
+      margin-left: 8px;
+      padding: 6px 10px;
+      background-color: #234075;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    .print-btn:hover { background-color: #476db5; }
+
+    /* Empty state */
+    .empty {
+      padding: 40px;
+      text-align: center;
+      color: #666;
+      font-size: 1rem;
+    }
+
+    /* Print styles */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      .preview-overlay.show .doc-page, .preview-overlay.show .doc-page * {
+        visibility: visible;
+      }
+      .preview-overlay.show .doc-page {
+        margin: 0;
+        box-shadow: none;
+        width: 100%;
+        min-height: 0;
+        padding: 0.5in;
+      }
+    }
+
+    /* Modal overlay for new document and wizard */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1200;
+    }
+    .modal-overlay.show {
+      display: flex;
+    }
+    .modal-content {
+      background-color: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      max-width: 480px;
+      width: 90%;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+    }
+    .modal-content h3 {
+      margin-top: 0;
+      font-size: 1.4rem;
+      color: #234075;
+    }
+    .modal-actions {
+      margin-top: 16px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .wizard-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1300;
+    }
+    .wizard-overlay.show {
+      display: flex;
+    }
+    .wizard-content {
+      background-color: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 90%;
+      overflow-y: auto;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+    }
+    .wizard-content h3 {
+      margin-top: 0;
+      font-size: 1.4rem;
+      color: #234075;
+    }
+    .wizard-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+    }
+    .wizard-table th, .wizard-table td {
+      border: 1px solid #e1e5ee;
+      padding: 8px;
+      text-align: left;
+    }
+    .wizard-table th {
+      background-color: #f1f3f8;
+      font-weight: 600;
+    }
+    .wizard-summary {
+      margin-top: 12px;
+      border-top: 1px solid #e1e5ee;
+      padding-top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <header class="navbar">
+    <div class="title">bid2build</div>
+    <nav>
+      <ul>
+        <li data-tab="projects" class="active">Projects</li>
+        <li data-tab="people">People</li>
+        <li data-tab="products">Products</li>
+        <li data-tab="dashboard">Dashboard</li>
+      </ul>
+    </nav>
+  </header>
+  <main id="main">
+    <!-- Projects Section -->
+    <div class="section active" id="projects-section">
+      <div class="toolbar">
+        <input type="search" id="projects-search" placeholder="Search projects..." aria-label="Search projects">
+        <select id="projects-filter" aria-label="Filter projects by status">
+          <option value="all">All Statuses</option>
+          <option value="Planned">Planned</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Completed">Completed</option>
+        </select>
+        <div class="view-toggle" id="projects-view-toggle">
+          <button data-view="tile" class="active" aria-label="Tile view">Tile</button>
+          <button data-view="list" aria-label="List view">List</button>
+        </div>
+      </div>
+      <div id="projects-content"></div>
+    </div>
+    <!-- People Section -->
+    <div class="section" id="people-section">
+      <div class="toolbar">
+        <input type="search" id="people-search" placeholder="Search people..." aria-label="Search people">
+        <select id="people-filter" aria-label="Filter people by type">
+          <option value="all">All Types</option>
+          <option value="Client">Client</option>
+          <option value="Contractor">Contractor</option>
+          <option value="Vendor">Vendor</option>
+          <option value="Subcontractor">Subcontractor</option>
+        </select>
+        <div class="view-toggle" id="people-view-toggle">
+          <button data-view="tile" class="active">Tile</button>
+          <button data-view="list">List</button>
+        </div>
+      </div>
+      <div id="people-content"></div>
+    </div>
+    <!-- Products Section -->
+    <div class="section" id="products-section">
+      <div class="toolbar">
+        <input type="search" id="products-search" placeholder="Search products..." aria-label="Search products">
+        <select id="products-filter" aria-label="Filter products by kind">
+          <option value="all">All Kinds</option>
+          <option value="Material">Material</option>
+          <option value="Labor">Labor</option>
+        </select>
+        <div class="view-toggle" id="products-view-toggle">
+          <button data-view="tile" class="active">Tile</button>
+          <button data-view="list">List</button>
+        </div>
+      </div>
+      <div id="products-content"></div>
+    </div>
+    <!-- Dashboard Section -->
+    <div class="section" id="dashboard-section">
+      <div class="detail-section">
+        <h2>Dashboard</h2>
+        <p>This area can display summary information, like counts of projects, documents, and more. It serves as a placeholder for future analytics.</p>
+        <div id="dashboard-stats" style="margin-top:20px; display:flex; gap:24px; flex-wrap:wrap;"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Detail overlay -->
+  <div class="overlay" id="detail-overlay" aria-modal="true" role="dialog">
+    <div class="drawer" id="detail-drawer">
+      <button class="drawer-close" id="drawer-close" aria-label="Close details">×</button>
+      <div class="drawer-header" id="drawer-header"></div>
+      <div class="drawer-content" id="drawer-content"></div>
+    </div>
+  </div>
+
+  <!-- Document preview overlay -->
+  <div class="preview-overlay" id="preview-overlay" aria-modal="true" role="dialog">
+    <div class="preview-content">
+      <div class="preview-header">
+        <h3 id="preview-title">Document Preview</h3>
+        <div>
+          <button class="print-btn" id="print-btn">Print</button>
+          <button class="preview-close" id="preview-close" aria-label="Close preview">×</button>
+        </div>
+      </div>
+      <div class="preview-body" id="preview-body">
+        <!-- Document page goes here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- New Document Modal -->
+  <div class="modal-overlay" id="new-doc-modal" aria-modal="true" role="dialog" aria-labelledby="newDocTitle">
+    <div class="modal-content">
+      <h3 id="newDocTitle">Create New Document</h3>
+      <div style="margin-bottom:12px;">
+        <label for="doc-type-select" style="display:block;margin-bottom:4px;">Document Type</label>
+        <select id="doc-type-select" style="width:100%; padding:6px;">
+          <!-- options inserted dynamically -->
+        </select>
+      </div>
+      <div id="doc-name-container" style="margin-bottom:12px;">
+        <label for="doc-name-input" style="display:block;margin-bottom:4px;">Document Name</label>
+        <input type="text" id="doc-name-input" style="width:100%; padding:6px;">
+      </div>
+    <!-- Extra fields for certain document types (e.g. selecting a parent proposal for change orders or invoices) -->
+    <div id="doc-extra-container" style="margin-bottom:12px;"></div>
+      <div class="modal-actions">
+        <button id="cancel-doc-btn" style="padding:6px 12px;">Cancel</button>
+        <button id="create-doc-btn" style="padding:6px 12px; background-color:#234075; color:#fff; border:none; border-radius:4px;">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Proposal Wizard (formerly Estimate Wizard) -->
+  <div class="wizard-overlay" id="proposal-wizard" aria-modal="true" role="dialog" aria-labelledby="proposalWizardTitle">
+    <div class="wizard-content">
+      <h3 id="proposalWizardTitle">Proposal Wizard</h3>
+      <p>Select products and enter quantities to include in the proposal.</p>
+      <table class="wizard-table" id="wizard-product-table">
+        <thead>
+          <tr><th>Name</th><th>Unit</th><th>Price</th><th>Quantity</th></tr>
+        </thead>
+        <tbody>
+          <!-- products inserted dynamically -->
+        </tbody>
+      </table>
+      <div class="wizard-summary" id="wizard-summary">
+        <!-- summary inserted dynamically -->
+      </div>
+      <!-- Additional details for proposal generation -->
+      <div class="wizard-details" style="margin-top:16px; max-height:40vh; overflow-y:auto;">
+        <h4>Project Overview</h4>
+        <textarea id="proposal-overview" rows="3" style="width:100%; box-sizing:border-box;"></textarea>
+        <h4>Scope of Work</h4>
+        <textarea id="proposal-scope" rows="4" style="width:100%; box-sizing:border-box;"></textarea>
+        <h4>Inclusions &amp; Exclusions</h4>
+        <textarea id="proposal-inclusions" rows="3" style="width:100%; box-sizing:border-box;" placeholder="Includes:"></textarea>
+        <textarea id="proposal-exclusions" rows="3" style="width:100%; box-sizing:border-box;" placeholder="Excludes:"></textarea>
+        <h4>Payment Schedule (%)</h4>
+        <label>Deposit <input type="number" id="proposal-deposit" min="0" max="100" value="30" style="width:60px; margin-left:4px;"></label>
+        <label style="margin-left:20px;">Progress <input type="number" id="proposal-progress" min="0" max="100" value="40" style="width:60px; margin-left:4px;"></label>
+        <p style="font-size:0.85rem; margin-top:4px;">Balance will be computed automatically.</p>
+        <h4>Sales Tax (Materials)</h4>
+        <!-- Allow the user to specify a sales tax percentage applied only to material line items. Default to 5.5% (Wisconsin). -->
+        <label>Tax Rate <input type="number" id="proposal-tax" min="0" max="100" step="0.1" value="5.5" style="width:80px; margin-left:4px;"></label>
+        <p style="font-size:0.85rem; margin-top:4px;">Enter a percentage (e.g., 5.5 for 5.5%). This tax will be applied to materials only.</p>
+        <h4>Schedule &amp; Access</h4>
+        <textarea id="proposal-schedule" rows="2" style="width:100%; box-sizing:border-box;"></textarea>
+        <h4>Warranty</h4>
+        <textarea id="proposal-warranty" rows="2" style="width:100%; box-sizing:border-box;"></textarea>
+        <h4>Terms &amp; Conditions</h4>
+        <textarea id="proposal-terms" rows="3" style="width:100%; box-sizing:border-box;"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button id="cancel-wizard-btn" style="padding:6px 12px;">Cancel</button>
+        <button id="finish-wizard-btn" style="padding:6px 12px; background-color:#234075; color:#fff; border:none; border-radius:4px;">Create Proposal</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* Application state */
+    const state = {
+      currentTab: 'projects',
+      viewModes: {
+        projects: 'tile',
+        people: 'tile',
+        products: 'tile'
+      },
+      filters: {
+        projects: { search: '', status: 'all' },
+        people: { search: '', type: 'all' },
+        products: { search: '', kind: 'all' }
+      },
+      projects: [],
+      people: [],
+      products: []
+    };
+
+    // Drawer interaction state for sliding drawer
+    let currentTrigger = null;
+    let scrollPosition = 0;
+    let focusTrapHandler = null;
+
+    /* Sample data initialization */
+    function initData() {
+      // People
+      // Seed people with address and notes for editing and notes functionality
+      state.people = [
+        { id: 1, name: 'John Doe', type: 'Client', email: 'john@example.com', phone: '555-123-4567', address: '123 Lakeshore Dr', city: 'Milwaukee', state: 'WI', zip: '53202', notes: [] },
+        { id: 2, name: 'Jane Smith', type: 'Contractor', email: 'jane@builder.com', phone: '555-987-6543', address: '456 Main St', city: 'Madison', state: 'WI', zip: '53703', notes: [] },
+        { id: 3, name: 'Mike Johnson', type: 'Vendor', email: 'mike@supplyco.com', phone: '555-222-3333', address: '789 Market Ave', city: 'Chicago', state: 'IL', zip: '60601', notes: [] },
+        { id: 4, name: 'Sara Lee', type: 'Subcontractor', email: 'sara@custombuild.com', phone: '555-654-3210', address: '321 Forest Ln', city: 'Green Bay', state: 'WI', zip: '54303', notes: [] }
+      ];
+      // Projects
+      // Projects start with useClientAddress set to true so the project defaults to the client's home address.
+      // A custom address can later be set through the project detail view.
+      state.projects = [
+        {
+          id: 1,
+          name: 'Lake House Renovation',
+          status: 'In Progress',
+          amount: 75000,
+          clientId: 1,
+          description: 'Full renovation of lakeside property.',
+          documents: [],
+          address: null,
+          city: null,
+          state: null,
+          zip: null,
+          useClientAddress: true
+        },
+        {
+          id: 2,
+          name: 'Office Build-Out',
+          status: 'Planned',
+          amount: 150000,
+          clientId: 2,
+          description: 'Tenant improvement for office space.',
+          documents: [],
+          address: null,
+          city: null,
+          state: null,
+          zip: null,
+          useClientAddress: true
+        },
+        {
+          id: 3,
+          name: 'Kitchen Remodel',
+          status: 'Completed',
+          amount: 30000,
+          clientId: 1,
+          description: 'Update kitchen with modern finishes.',
+          documents: [],
+          address: null,
+          city: null,
+          state: null,
+          zip: null,
+          useClientAddress: true
+        }
+      ];
+      // Products
+      state.products = [
+        { id: 1, name: 'Concrete', kind: 'Material', unit: 'cubic yard', price: 120 },
+        { id: 2, name: 'Framing Labor', kind: 'Labor', unit: 'hour', price: 40 },
+        { id: 3, name: 'Drywall', kind: 'Material', unit: 'sheet', price: 10 },
+        { id: 4, name: 'Roofing Labor', kind: 'Labor', unit: 'hour', price: 45 },
+        { id: 5, name: 'Paint', kind: 'Material', unit: 'gallon', price: 30 }
+      ];
+      // Assign projects to people (derive)
+      state.people.forEach(p => { p.projectIds = state.projects.filter(pr => pr.clientId === p.id).map(pr => pr.id); });
+
+      // After seeding, default each project's address to the client's home address when useClientAddress is true.
+      state.projects.forEach(pr => {
+        const client = state.people.find(p => p.id === pr.clientId);
+        if (client && pr.useClientAddress) {
+          // Copy the client’s full address (street, city, state, zip) to the project.
+          pr.address = client.address;
+          pr.city = client.city;
+          pr.state = client.state;
+          pr.zip = client.zip;
+        }
+      });
+      // Seed documents for the first project. We no longer create a separate
+      // contract because an accepted proposal serves as the contract. An
+      // initial proposal and a sample invoice are created here for demo.
+      const project1 = state.projects[0];
+      project1.documents.push(createDocument(project1.id, 'Proposal', 'Proposal #1'));
+      project1.documents.push(createDocument(project1.id, 'Invoice', 'Invoice #1'));
+    }
+
+    /* Document type definitions and statuses */
+    // The core document types for the application. A "Proposal" functions as both
+    // an estimate and, once accepted, becomes the contract. Change orders are
+    // associated with accepted proposals. Invoices are generated from an
+    // accepted proposal and automatically create a receipt and lien waiver.
+    const docDefinitions = {
+      'Proposal': { statuses: ['Draft','Sent','Accepted','Declined','Archived'] },
+      'Change Order': { statuses: ['Draft','Sent','Approved','Declined','Archived'] },
+      'Invoice': { statuses: ['Draft','Sent','Partial','Paid','Past Due','Void'] },
+      'Receipt': { statuses: ['Issued'] },
+      'Lien Waiver': { statuses: ['Draft','Issued','Notarized','Archived'] }
+    };
+
+    // Company information used in proposal generation. These values should be
+    // customized to reflect your business details. They are displayed in the
+    // contractor section of the proposal/agreement templates.
+    const companyInfo = {
+      name: 'The Firm – Your Real Estate Concierge',
+      affiliation: 'Coldwell Banker Realty',
+      address: '123 Business Avenue',
+      city: 'Milwaukee',
+      state: 'WI',
+      zip: '53202',
+      phone: '(414) 555-0101',
+      email: 'info@thefirmrealestate.com',
+      license: 'Licensed Realtors',
+      insurance: 'Fully insured; certificate available upon request',
+      estimator: 'Flavia Mildenberg & Andrew Mayeshiba'
+    };
+
+    let nextDocId = 1;
+    function createDocument(projectId, type, name, extra = {}) {
+      // Create a new document for a project. Additional metadata such as
+      // parentId, lineItems, address, or other properties can be passed via
+      // the extra object. When no name is provided, a default name is
+      // generated based on the type.
+      const def = docDefinitions[type];
+      const doc = {
+        id: nextDocId++,
+        projectId,
+        type,
+        name: name || type + ' #' + nextDocId,
+        status: def.statuses[0],
+        archived: false,
+        created: new Date()
+      };
+      // Merge any extra properties (e.g. parentId, lineItems)
+      Object.assign(doc, extra);
+      return doc;
+    }
+
+    /* Helper functions */
+    function formatCurrency(num) {
+      return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>'"]/g, function(m) {
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','\'':'&#39;','"':'&quot;'})[m];
+      });
+    }
+
+    /**
+     * Format a JavaScript Date or ISO string into a readable date/time string.
+     * We use localeString to respect the user's locale and include both date and time.
+     * @param {Date|string} d - a Date object or ISO date string
+     */
+    function formatDateTime(d) {
+      const date = (d instanceof Date) ? d : new Date(d);
+      return date.toLocaleString();
+    }
+
+    /**
+     * Trap keyboard focus within a given container. When Tab or Shift+Tab are pressed,
+     * focus cycles between the first and last focusable elements. The handler is
+     * stored in the global focusTrapHandler so it can be removed when closing.
+     * @param {HTMLElement} container
+     */
+    function trapFocus(container) {
+      // Remove any existing trap
+      if (focusTrapHandler) {
+        document.removeEventListener('keydown', focusTrapHandler);
+        focusTrapHandler = null;
+      }
+      const selectors = 'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])';
+      const focusable = Array.from(container.querySelectorAll(selectors)).filter(el => !el.disabled && el.offsetParent !== null);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      setTimeout(() => { first.focus(); }, 0);
+      focusTrapHandler = function(e) {
+        // Only trap when one of our overlays/drawers is visible
+        if (!document.getElementById('detail-overlay').classList.contains('show') &&
+            !document.getElementById('new-doc-modal').classList.contains('show') &&
+            !document.getElementById('proposal-wizard').classList.contains('show')) {
+          return;
+        }
+        if (e.key === 'Tab') {
+          if (e.shiftKey) {
+            if (document.activeElement === first) {
+              e.preventDefault();
+              last.focus();
+            }
+          } else {
+            if (document.activeElement === last) {
+              e.preventDefault();
+              first.focus();
+            }
+          }
+        }
+      };
+      document.addEventListener('keydown', focusTrapHandler);
+    }
+
+    /* Tab switching */
+    document.querySelectorAll('.navbar li').forEach(item => {
+      item.addEventListener('click', () => {
+        const tab = item.getAttribute('data-tab');
+        if (tab) {
+          switchTab(tab);
+        }
+      });
+    });
+    function switchTab(tab) {
+      state.currentTab = tab;
+      // Update nav
+      document.querySelectorAll('.navbar li').forEach(li => {
+        li.classList.toggle('active', li.getAttribute('data-tab') === tab);
+      });
+      // Show correct section
+      document.querySelectorAll('.section').forEach(sec => {
+        sec.classList.toggle('active', sec.id === tab + '-section');
+      });
+      // Render section
+      if (tab === 'projects') renderProjects();
+      if (tab === 'people') renderPeople();
+      if (tab === 'products') renderProducts();
+      if (tab === 'dashboard') renderDashboard();
+    }
+
+    /* Renderers */
+    function renderProjects() {
+      const container = document.getElementById('projects-content');
+      const { search, status } = state.filters.projects;
+      const view = state.viewModes.projects;
+      const projects = state.projects.filter(pr => {
+        const matchesSearch = pr.name.toLowerCase().includes(search.toLowerCase()) ||
+          (getPersonById(pr.clientId)?.name.toLowerCase().includes(search.toLowerCase()));
+        const matchesStatus = status === 'all' || pr.status === status;
+        return matchesSearch && matchesStatus;
+      });
+      if (projects.length === 0) {
+        container.innerHTML = `<div class="empty">No projects match your criteria.</div>`;
+        return;
+      }
+      if (view === 'tile') {
+        let html = '<div class="tile-container">';
+        projects.forEach(pr => {
+          const person = getPersonById(pr.clientId);
+          html += `<div class="tile" data-type="project" data-id="${pr.id}">
+                    <div class="title">${escapeHtml(pr.name)}</div>
+                    <div class="subtext">Status: ${escapeHtml(pr.status)}</div>
+                    <div class="subtext">Amount: ${formatCurrency(pr.amount)}</div>
+                    <div class="subtext">Client: ${escapeHtml(person ? person.name : '')}</div>
+                  </div>`;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+      } else {
+        let html = '<table class="list-table"><thead><tr>' +
+                   '<th>Project</th><th>Status</th><th>Amount</th><th>Client</th></tr></thead><tbody>';
+        projects.forEach(pr => {
+          const person = getPersonById(pr.clientId);
+          html += `<tr data-type="project" data-id="${pr.id}">` +
+                  `<td>${escapeHtml(pr.name)}</td>` +
+                  `<td>${escapeHtml(pr.status)}</td>` +
+                  `<td>${formatCurrency(pr.amount)}</td>` +
+                  `<td>${escapeHtml(person ? person.name : '')}</td>` +
+                  '</tr>';
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      }
+    }
+
+    function renderPeople() {
+      const container = document.getElementById('people-content');
+      const { search, type } = state.filters.people;
+      const view = state.viewModes.people;
+      const people = state.people.filter(p => {
+        const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
+          p.email.toLowerCase().includes(search.toLowerCase()) ||
+          p.phone.toLowerCase().includes(search.toLowerCase());
+        const matchesType = type === 'all' || p.type === type;
+        return matchesSearch && matchesType;
+      });
+      if (people.length === 0) {
+        container.innerHTML = `<div class="empty">No people match your criteria.</div>`;
+        return;
+      }
+      if (view === 'tile') {
+        let html = '<div class="tile-container">';
+        people.forEach(p => {
+          html += `<div class="tile" data-type="person" data-id="${p.id}">
+                    <div class="title">${escapeHtml(p.name)}</div>
+                    <div class="subtext">${escapeHtml(p.type)}</div>
+                    <div class="subtext">${escapeHtml(p.city)}, ${escapeHtml(p.state)}</div>
+                  </div>`;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+      } else {
+        let html = '<table class="list-table"><thead><tr>' +
+                   '<th>Name</th><th>Type</th><th>Email</th><th>Phone</th></tr></thead><tbody>';
+        people.forEach(p => {
+          html += `<tr data-type="person" data-id="${p.id}">` +
+                  `<td>${escapeHtml(p.name)}</td>` +
+                  `<td>${escapeHtml(p.type)}</td>` +
+                  `<td>${escapeHtml(p.email)}</td>` +
+                  `<td>${escapeHtml(p.phone)}</td>` +
+                  '</tr>';
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      }
+    }
+
+    function renderProducts() {
+      const container = document.getElementById('products-content');
+      const { search, kind } = state.filters.products;
+      const view = state.viewModes.products;
+      const products = state.products.filter(pr => {
+        const matchesSearch = pr.name.toLowerCase().includes(search.toLowerCase());
+        const matchesKind = kind === 'all' || pr.kind === kind;
+        return matchesSearch && matchesKind;
+      });
+      if (products.length === 0) {
+        container.innerHTML = `<div class="empty">No products match your criteria.</div>`;
+        return;
+      }
+      if (view === 'tile') {
+        let html = '<div class="tile-container">';
+        products.forEach(pr => {
+          html += `<div class="tile" data-type="product" data-id="${pr.id}">
+                    <div class="title">${escapeHtml(pr.name)}</div>
+                    <div class="subtext">${escapeHtml(pr.kind)}</div>
+                    <div class="subtext">Unit: ${escapeHtml(pr.unit)}</div>
+                    <div class="subtext">Price: ${formatCurrency(pr.price)}</div>
+                  </div>`;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+      } else {
+        let html = '<table class="list-table"><thead><tr>' +
+                   '<th>Name</th><th>Kind</th><th>Unit</th><th>Price</th></tr></thead><tbody>';
+        products.forEach(pr => {
+          html += `<tr data-type="product" data-id="${pr.id}">` +
+                  `<td>${escapeHtml(pr.name)}</td>` +
+                  `<td>${escapeHtml(pr.kind)}</td>` +
+                  `<td>${escapeHtml(pr.unit)}</td>` +
+                  `<td>${formatCurrency(pr.price)}</td>` +
+                  '</tr>';
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      }
+    }
+
+    function renderDashboard() {
+      const stats = document.getElementById('dashboard-stats');
+      const totalProjects = state.projects.length;
+      const totalPeople = state.people.length;
+      const totalProducts = state.products.length;
+      const totalDocs = state.projects.reduce((sum, pr) => sum + pr.documents.length, 0);
+      stats.innerHTML = `
+        <div style="background:#fff;border:1px solid #e1e5ee;border-radius:8px;padding:16px;min-width:150px;">
+          <strong style="font-size:1.4rem;">${totalProjects}</strong><br>Projects
+        </div>
+        <div style="background:#fff;border:1px solid #e1e5ee;border-radius:8px;padding:16px;min-width:150px;">
+          <strong style="font-size:1.4rem;">${totalPeople}</strong><br>People
+        </div>
+        <div style="background:#fff;border:1px solid #e1e5ee;border-radius:8px;padding:16px;min-width:150px;">
+          <strong style="font-size:1.4rem;">${totalProducts}</strong><br>Products
+        </div>
+        <div style="background:#fff;border:1px solid #e1e5ee;border-radius:8px;padding:16px;min-width:150px;">
+          <strong style="font-size:1.4rem;">${totalDocs}</strong><br>Documents
+        </div>
+      `;
+    }
+
+    /* Event listeners for search and filters */
+    document.getElementById('projects-search').addEventListener('input', (e) => {
+      state.filters.projects.search = e.target.value;
+      renderProjects();
+    });
+    document.getElementById('projects-filter').addEventListener('change', (e) => {
+      state.filters.projects.status = e.target.value;
+      renderProjects();
+    });
+    document.getElementById('people-search').addEventListener('input', (e) => {
+      state.filters.people.search = e.target.value;
+      renderPeople();
+    });
+    document.getElementById('people-filter').addEventListener('change', (e) => {
+      state.filters.people.type = e.target.value;
+      renderPeople();
+    });
+    document.getElementById('products-search').addEventListener('input', (e) => {
+      state.filters.products.search = e.target.value;
+      renderProducts();
+    });
+    document.getElementById('products-filter').addEventListener('change', (e) => {
+      state.filters.products.kind = e.target.value;
+      renderProducts();
+    });
+    // View toggle event listeners
+    ['projects','people','products'].forEach(section => {
+      document.getElementById(section + '-view-toggle').addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') {
+          const view = e.target.getAttribute('data-view');
+          state.viewModes[section] = view;
+          // toggle buttons
+          document.querySelectorAll('#' + section + '-view-toggle button').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-view') === view);
+          });
+          if (section === 'projects') renderProjects();
+          if (section === 'people') renderPeople();
+          if (section === 'products') renderProducts();
+        }
+      });
+    });
+
+    /* Utility functions to get data */
+    function getProjectById(id) {
+      return state.projects.find(pr => pr.id == id);
+    }
+    function getPersonById(id) {
+      return state.people.find(p => p.id == id);
+    }
+    function getProductById(id) {
+      return state.products.find(p => p.id == id);
+    }
+
+    /* Delegated click handler for opening details */
+    // Delegated click handler for tiles/rows to open details. Avoid doc-action buttons.
+    document.getElementById('main').addEventListener('click', (e) => {
+      const trigger = e.target.closest('[data-id]');
+      // Do not open when clicking on internal actions (e.g., document actions)
+      if (trigger && !e.target.closest('.doc-actions')) {
+        const type = trigger.getAttribute('data-type');
+        const id = trigger.getAttribute('data-id');
+        // Highlight selected item and save reference
+        if (currentTrigger) currentTrigger.classList.remove('selected');
+        currentTrigger = trigger;
+        currentTrigger.classList.add('selected');
+        openDetail(type, parseInt(id));
+      }
+    });
+
+    /* Detail drawer functions */
+    function openDetail(type, id) {
+      const overlay = document.getElementById('detail-overlay');
+      const drawer = document.getElementById('detail-drawer');
+      // Save scroll position and lock body scroll
+      scrollPosition = window.scrollY || document.documentElement.scrollTop;
+      document.body.classList.add('modal-open');
+      document.body.style.top = `-${scrollPosition}px`;
+      // Show overlay and slide in drawer
+      overlay.classList.add('show');
+      drawer.classList.add('open');
+      // Render content based on type
+      if (type === 'project') {
+        const project = getProjectById(id);
+        renderProjectDetail(project);
+      } else if (type === 'person') {
+        const person = getPersonById(id);
+        renderPersonDetail(person);
+      } else if (type === 'product') {
+        const product = getProductById(id);
+        renderProductDetail(product);
+      }
+      // Trap focus inside drawer
+      trapFocus(drawer);
+      // Update URL hash
+      if (history.pushState) {
+        history.pushState(null, '', `#${type}/${id}`);
+      } else {
+        location.hash = `#${type}/${id}`;
+      }
+    }
+
+    document.getElementById('drawer-close').addEventListener('click', closeDetail);
+    function closeDetail() {
+      const overlay = document.getElementById('detail-overlay');
+      const drawer = document.getElementById('detail-drawer');
+      overlay.classList.remove('show');
+      drawer.classList.remove('open');
+      // Unlock body scroll and restore position
+      document.body.classList.remove('modal-open');
+      document.body.style.top = '';
+      window.scrollTo(0, scrollPosition);
+      // Remove focus trap
+      if (focusTrapHandler) {
+        document.removeEventListener('keydown', focusTrapHandler);
+        focusTrapHandler = null;
+      }
+      // Remove highlight and return focus
+      if (currentTrigger) {
+        currentTrigger.classList.remove('selected');
+        currentTrigger.focus();
+        currentTrigger = null;
+      }
+      // Clear URL hash
+      if (history.pushState) {
+        history.pushState(null, '', location.pathname + location.search);
+      } else {
+        location.hash = '';
+      }
+    }
+    // Close overlay on ESC
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const previewShow = document.getElementById('preview-overlay').classList.contains('show');
+        const wizardShow = document.getElementById('proposal-wizard').classList.contains('show');
+        const docModalShow = document.getElementById('new-doc-modal').classList.contains('show');
+        const detailShow = document.getElementById('detail-overlay').classList.contains('show');
+        if (previewShow) {
+          closePreview();
+        } else if (wizardShow) {
+          // cancel wizard
+          document.getElementById('cancel-wizard-btn').click();
+        } else if (docModalShow) {
+          document.getElementById('cancel-doc-btn').click();
+        } else if (detailShow) {
+          closeDetail();
+        }
+      }
+    });
+
+    // Close drawer when clicking on the backdrop (outside the drawer)
+    document.getElementById('detail-overlay').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) {
+        closeDetail();
+      }
+    });
+
+    function renderProjectDetail(project) {
+      const header = document.getElementById('drawer-header');
+      const content = document.getElementById('drawer-content');
+      const client = getPersonById(project.clientId);
+      header.innerHTML = `<h2>${escapeHtml(project.name)}</h2>
+                          <div class="subline">Status: ${escapeHtml(project.status)} &bull; Amount: ${formatCurrency(project.amount)}</div>`;
+      // Tabs: Details and Documents
+      let tabsHtml = `<div class="detail-tabs" id="project-tabs">
+                        <button data-tab="details" class="active">Details</button>
+                        <button data-tab="documents">Documents (${project.documents.filter(d => !d.archived).length})</button>
+                      </div>`;
+      // Build details section with optional editing for address
+      let detailsHtml = `<div id="project-details" class="detail-section">`;
+      detailsHtml += `<h3>Client</h3>
+                        <div class="detail-info">
+                          <a href="mailto:${escapeHtml(client.email)}">${escapeHtml(client.email)}</a>
+                          <a href="tel:${escapeHtml(client.phone)}">${escapeHtml(client.phone)}</a><br>
+                          ${escapeHtml(client.city)}, ${escapeHtml(client.state)}
+                        </div>`;
+      detailsHtml += `<h3>Project Description</h3>
+                        <div class="detail-info">${escapeHtml(project.description)}</div>`;
+      // Address section
+      detailsHtml += `<h3>Project Address</h3>`;
+      if (!project._editingAddress) {
+        // Determine which address to display: use client address when flagged, otherwise project values
+        const street = project.useClientAddress ? client.address : (project.address || client.address);
+        const cityVal = project.useClientAddress ? client.city : (project.city || client.city);
+        const stateVal = project.useClientAddress ? client.state : (project.state || client.state);
+        const zipVal = project.useClientAddress ? client.zip : (project.zip || client.zip);
+        detailsHtml += `<div class="detail-info">${escapeHtml(street)}<br>${escapeHtml(cityVal)}, ${escapeHtml(stateVal)} ${escapeHtml(zipVal || '')}</div>`;
+        detailsHtml += `<button id="edit-project-addr-btn" style="margin-top:8px;">Edit Address</button>`;
+      } else {
+        const useClient = project.useClientAddress;
+        const currentStreet = project.address || '';
+        const currentCity = project.city || '';
+        const currentState = project.state || '';
+        const currentZip = project.zip || '';
+        detailsHtml += `<div class="detail-info">
+                          <label style="display:block;margin-bottom:8px;"><input type="checkbox" id="use-client-addr" ${useClient ? 'checked' : ''}> Use client's home address (${escapeHtml(client.address)}, ${escapeHtml(client.city)}, ${escapeHtml(client.state)} ${escapeHtml(client.zip || '')})</label>
+                          <label style="display:block;margin-bottom:8px;">Street Address<br><input type="text" id="edit-project-address" value="${escapeHtml(currentStreet)}" style="width:100%;"></label>
+                          <label style="display:block;margin-bottom:8px;">City<br><input type="text" id="edit-project-city" value="${escapeHtml(currentCity)}" style="width:100%;"></label>
+                          <label style="display:block;margin-bottom:8px;">State<br><input type="text" id="edit-project-state" value="${escapeHtml(currentState)}" style="width:100%;"></label>
+                          <label style="display:block;margin-bottom:8px;">ZIP<br><input type="text" id="edit-project-zip" value="${escapeHtml(currentZip)}" style="width:100%;"></label>
+                        </div>`;
+        detailsHtml += `<div style="margin-top:8px;"><button id="save-project-addr-btn">Save</button> <button id="cancel-project-addr-btn">Cancel</button></div>`;
+      }
+      detailsHtml += `</div>`;
+      // Documents tab
+      let docsHtml = `<div id="project-documents" class="detail-section" style="display:none;">
+                        <button class="add-doc-btn" id="add-doc-btn">+ New Document</button>
+                        <table class="doc-list">
+                          <thead><tr><th>Type</th><th>Name</th><th>Status</th><th>Created</th><th></th></tr></thead><tbody>`;
+      project.documents.forEach(doc => {
+        if (doc.archived) return;
+        docsHtml += `<tr data-doc-id="${doc.id}">
+                        <td>${escapeHtml(doc.type)}</td>
+                        <td>${escapeHtml(doc.name)}</td>
+                        <td>${escapeHtml(doc.status)}</td>
+                        <td>${escapeHtml(formatDateTime(doc.created))}</td>
+                        <td>
+                          <div class="doc-actions">
+                            <button data-action="rename">Rename</button>
+                            <button data-action="status">Change Status</button>
+                            <button data-action="archive">Archive</button>`;
+        // Conditionally show a Generate button for invoices and an Edit button for change orders
+        if (doc.type === 'Invoice') {
+          docsHtml += `<button data-action="generate">Generate</button>`;
+        }
+        if (doc.type === 'Change Order') {
+          docsHtml += `<button data-action="edit">Edit</button>`;
+        }
+        docsHtml += `<button data-action="preview">View</button>`;
+        docsHtml += `</div>
+                        </td>
+                     </tr>`;
+      });
+      docsHtml += `</tbody></table>
+                  </div>`;
+      content.innerHTML = tabsHtml + detailsHtml + docsHtml;
+      // Tab switching inside project detail
+      const tabContainer = document.getElementById('project-tabs');
+      tabContainer.addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') {
+          const tab = e.target.getAttribute('data-tab');
+          tabContainer.querySelectorAll('button').forEach(btn => btn.classList.toggle('active', btn.getAttribute('data-tab') === tab));
+          document.getElementById('project-details').style.display = (tab === 'details') ? '' : 'none';
+          document.getElementById('project-documents').style.display = (tab === 'documents') ? '' : 'none';
+        }
+      });
+      // Add document button
+      document.getElementById('add-doc-btn').addEventListener('click', () => {
+        // Open modal to create new document instead of prompt
+        openNewDocModal(project);
+      });
+      // Document actions
+      const docTable = content.querySelector('.doc-list');
+      docTable.addEventListener('click', (e) => {
+        const actionBtn = e.target.closest('button');
+        if (!actionBtn) return;
+        const action = actionBtn.getAttribute('data-action');
+        const row = actionBtn.closest('tr');
+        const docId = parseInt(row.getAttribute('data-doc-id'));
+        const doc = project.documents.find(d => d.id === docId);
+        if (action === 'rename') {
+          const newName = prompt('Enter a new name for this document:', doc.name);
+          if (newName) { doc.name = newName.trim(); }
+        } else if (action === 'status') {
+          const statuses = docDefinitions[doc.type].statuses;
+          const nextStatus = prompt('Change status (choose one of:\n' + statuses.join(', ') + ')', doc.status);
+          if (nextStatus && statuses.includes(nextStatus)) { doc.status = nextStatus; }
+        } else if (action === 'archive') {
+          if (confirm('Are you sure you want to archive this document?')) { doc.archived = true; }
+        } else if (action === 'generate') {
+          // Generate a receipt and lien waiver for an invoice on demand
+          if (doc.type !== 'Invoice') {
+            // Only invoices support generation
+          } else {
+            const receiptName = 'Receipt #' + (project.documents.filter(d => d.type === 'Receipt').length + 1);
+            const receiptDoc = createDocument(project.id, 'Receipt', receiptName, { parentId: doc.id });
+            receiptDoc.status = 'Issued';
+            project.documents.push(receiptDoc);
+            const lienName = 'Lien Waiver #' + (project.documents.filter(d => d.type === 'Lien Waiver').length + 1);
+            const lienDoc = createDocument(project.id, 'Lien Waiver', lienName, { parentId: doc.id });
+            project.documents.push(lienDoc);
+          }
+        } else if (action === 'edit') {
+          // Edit an existing change order via the change order wizard
+          if (doc.type === 'Change Order') {
+            const parentDoc = project.documents.find(d => d.id === doc.parentId);
+            openChangeOrderWizard(project, doc, parentDoc);
+            return; // wizard will re-render after save
+          }
+        } else if (action === 'preview') {
+          openPreview(project, doc);
+        }
+        // re-render project detail to update doc list (note: keep active tab)
+        renderProjectDetail(project);
+        // if we were on documents tab, switch back to documents
+        const buttons = document.getElementById('project-tabs').querySelectorAll('button');
+        buttons.forEach(btn => {
+          if (btn.getAttribute('data-tab') === 'documents') btn.click();
+        });
+      });
+      // Edit address button handler
+      const editAddrBtn = document.getElementById('edit-project-addr-btn');
+      if (editAddrBtn) {
+        editAddrBtn.addEventListener('click', () => {
+          project._editingAddress = true;
+          renderProjectDetail(project);
+          // keep details tab active
+          document.querySelectorAll('#project-tabs button').forEach(btn => {
+            if (btn.getAttribute('data-tab') === 'details') btn.classList.add('active');
+            else btn.classList.remove('active');
+          });
+          document.getElementById('project-documents').style.display = 'none';
+          document.getElementById('project-details').style.display = '';
+        });
+      }
+      // Save/cancel address editing
+      const saveAddrBtn = document.getElementById('save-project-addr-btn');
+      const cancelAddrBtn = document.getElementById('cancel-project-addr-btn');
+      if (saveAddrBtn && cancelAddrBtn) {
+        saveAddrBtn.addEventListener('click', () => {
+          const useClient = document.getElementById('use-client-addr').checked;
+          project.useClientAddress = useClient;
+          if (useClient) {
+            // Copy the client address fields to the project
+            project.address = client.address;
+            project.city = client.city;
+            project.state = client.state;
+            project.zip = client.zip;
+          } else {
+            const addrInput = document.getElementById('edit-project-address').value.trim();
+            const cityInput = document.getElementById('edit-project-city').value.trim();
+            const stateInput = document.getElementById('edit-project-state').value.trim();
+            const zipInput = document.getElementById('edit-project-zip').value.trim();
+            project.address = addrInput;
+            project.city = cityInput;
+            project.state = stateInput;
+            project.zip = zipInput;
+          }
+          project._editingAddress = false;
+          renderProjectDetail(project);
+          // stay on details tab
+          document.querySelectorAll('#project-tabs button').forEach(btn => {
+            if (btn.getAttribute('data-tab') === 'details') btn.classList.add('active');
+            else btn.classList.remove('active');
+          });
+        });
+        cancelAddrBtn.addEventListener('click', () => {
+          project._editingAddress = false;
+          renderProjectDetail(project);
+          document.querySelectorAll('#project-tabs button').forEach(btn => {
+            if (btn.getAttribute('data-tab') === 'details') btn.classList.add('active');
+            else btn.classList.remove('active');
+          });
+        });
+      }
+    }
+
+    function newDocumentModal(project) {
+      // Deprecated: replaced by openNewDocModal
+    }
+
+    function renderPersonDetail(person) {
+      const header = document.getElementById('drawer-header');
+      const content = document.getElementById('drawer-content');
+      header.innerHTML = `<h2>${escapeHtml(person.name)}</h2>
+                          <div class="subline">${escapeHtml(person.type)}</div>`;
+      let html = `<div class="detail-section">
+                    <h3>Contact</h3>
+                    <div class="detail-info">
+                      <a href="mailto:${escapeHtml(person.email)}">${escapeHtml(person.email)}</a>
+                      <a href="tel:${escapeHtml(person.phone)}">${escapeHtml(person.phone)}</a><br>
+                      ${escapeHtml(person.address)}<br>
+                      ${escapeHtml(person.city)}, ${escapeHtml(person.state)} ${escapeHtml(person.zip || '')}
+                    </div>
+                  </div>`;
+      // Related projects
+      const relatedProjects = state.projects.filter(pr => pr.clientId === person.id);
+      html += `<div class="detail-section"><h3>Projects</h3>`;
+      if (relatedProjects.length === 0) {
+        html += '<div class="detail-info">No related projects.</div>';
+      } else {
+        html += '<ul style="list-style:none;padding-left:0;">';
+        relatedProjects.forEach(pr => {
+          html += `<li style="margin-bottom:4px;"><a href="#" data-type="project" data-id="${pr.id}">${escapeHtml(pr.name)}</a></li>`;
+        });
+        html += '</ul>';
+      }
+      html += '</div>';
+      // Related documents
+      const docs = [];
+      state.projects.forEach(pr => {
+        if (pr.clientId === person.id) {
+          pr.documents.forEach(doc => { if (!doc.archived) docs.push({ doc, project: pr }); });
+        }
+      });
+      html += `<div class="detail-section"><h3>Documents</h3>`;
+      if (docs.length === 0) {
+        html += '<div class="detail-info">No related documents.</div>';
+      } else {
+        html += '<table class="doc-list"><thead><tr><th>Project</th><th>Type</th><th>Name</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+        docs.forEach(item => {
+          html += `<tr>
+                    <td>${escapeHtml(item.project.name)}</td>
+                    <td>${escapeHtml(item.doc.type)}</td>
+                    <td>${escapeHtml(item.doc.name)}</td>
+                    <td>${escapeHtml(item.doc.status)}</td>
+                    <td><div class="doc-actions"><button data-action="preview" data-proj-id="${item.project.id}" data-doc-id="${item.doc.id}">Preview</button></div></td>
+                   </tr>`;
+        });
+        html += '</tbody></table>';
+      }
+      html += '</div>';
+      content.innerHTML = html;
+      // Add click listeners to preview buttons inside person doc list
+      const previewButtons = content.querySelectorAll('.doc-actions button[data-action="preview"]');
+      previewButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const projId = parseInt(btn.getAttribute('data-proj-id'));
+          const docId = parseInt(btn.getAttribute('data-doc-id'));
+          const project = getProjectById(projId);
+          const doc = project.documents.find(d => d.id === docId);
+          openPreview(project, doc);
+        });
+      });
+      // Link project names inside person detail
+      content.querySelectorAll('a[data-type="project"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+          e.preventDefault();
+          const projId = parseInt(a.getAttribute('data-id'));
+          closeDetail();
+          setTimeout(() => openDetail('project', projId), 10);
+        });
+      });
+    }
+
+    function renderProductDetail(product) {
+      const header = document.getElementById('drawer-header');
+      const content = document.getElementById('drawer-content');
+      header.innerHTML = `<h2>${escapeHtml(product.name)}</h2>
+                          <div class="subline">${escapeHtml(product.kind)} &bull; Unit: ${escapeHtml(product.unit)} &bull; Price: ${formatCurrency(product.price)}</div>`;
+      let html = `<div class="detail-section">
+                    <h3>Details</h3>
+                    <div class="detail-info">
+                      Type: ${escapeHtml(product.kind)}<br>
+                      Unit: ${escapeHtml(product.unit)}<br>
+                      Price: ${formatCurrency(product.price)}
+                    </div>
+                  </div>`;
+      content.innerHTML = html;
+    }
+
+    /* Document preview functions */
+    function openPreview(project, doc) {
+      const overlay = document.getElementById('preview-overlay');
+      const titleEl = document.getElementById('preview-title');
+      const bodyEl = document.getElementById('preview-body');
+      titleEl.textContent = doc.type + ' Preview';
+      bodyEl.innerHTML = '';
+      // Create page content based on type. For proposals, we support a
+      // detailed or simple view; a toggle will be appended to the page to
+      // switch between representations.
+      const page = document.createElement('div');
+      page.className = 'doc-page';
+      function renderProposal(detailed) {
+        page.innerHTML = detailed ? generateProposalDetailed(project, doc) : generateProposalSimple(project, doc);
+      }
+      if (doc.type === 'Proposal') {
+        // Render default detailed view
+        renderProposal(true);
+        // Add toggle buttons above the page for switching views
+        const toggleBar = document.createElement('div');
+        toggleBar.style.display = 'flex';
+        toggleBar.style.justifyContent = 'flex-end';
+        toggleBar.style.marginBottom = '8px';
+        const detailedBtn = document.createElement('button');
+        detailedBtn.textContent = 'Detailed';
+        detailedBtn.style.marginRight = '4px';
+        const simpleBtn = document.createElement('button');
+        simpleBtn.textContent = 'Simple';
+        [detailedBtn, simpleBtn].forEach(btn => {
+          btn.style.padding = '4px 8px';
+          btn.style.border = '1px solid #ccc';
+          btn.style.background = '#fff';
+          btn.style.cursor = 'pointer';
+        });
+        // highlight default detailed view
+        detailedBtn.style.background = '#476db5';
+        detailedBtn.style.color = '#fff';
+        function setActive(btn) {
+          detailedBtn.style.background = '#fff';
+          detailedBtn.style.color = '#000';
+          simpleBtn.style.background = '#fff';
+          simpleBtn.style.color = '#000';
+          btn.style.background = '#476db5';
+          btn.style.color = '#fff';
+        }
+        detailedBtn.addEventListener('click', () => {
+          renderProposal(true);
+          setActive(detailedBtn);
+        });
+        simpleBtn.addEventListener('click', () => {
+          renderProposal(false);
+          setActive(simpleBtn);
+        });
+        toggleBar.appendChild(detailedBtn);
+        toggleBar.appendChild(simpleBtn);
+        bodyEl.appendChild(toggleBar);
+      } else if (doc.type === 'Change Order') {
+        page.innerHTML = generateChangeOrder(project, doc);
+      } else if (doc.type === 'Invoice') {
+        page.innerHTML = generateInvoice(project, doc);
+      } else if (doc.type === 'Receipt') {
+        page.innerHTML = generateReceipt(project, doc);
+      } else if (doc.type === 'Lien Waiver') {
+        page.innerHTML = generateLienWaiver(project, doc);
+      }
+      if (doc.type !== 'Proposal') {
+        bodyEl.appendChild(page);
+      } else {
+        // For proposals, append the page after the toggle bar
+        bodyEl.appendChild(page);
+      }
+      overlay.classList.add('show');
+    }
+    document.getElementById('preview-close').addEventListener('click', closePreview);
+    function closePreview() {
+      document.getElementById('preview-overlay').classList.remove('show');
+    }
+    document.getElementById('print-btn').addEventListener('click', () => {
+      window.print();
+    });
+
+    /* Document templates */
+    function generateProposalDetailed(project, doc) {
+      /*
+       * Generate a detailed proposal and agreement resembling a professional contractor proposal. The
+       * layout includes company information, client information, project overview, scope of work,
+       * inclusions/exclusions, an itemized estimate with totals and a payment schedule, along with
+       * warranty, terms, and acceptance sections. Deposit and draw amounts are automatically
+       * calculated based on the total estimate (30/40/30 split).
+       */
+      // Determine the client and property address fields
+      const client = getPersonById(project.clientId);
+      const street = project.useClientAddress ? client.address : (project.address || client.address);
+      const cityVal = project.useClientAddress ? client.city : (project.city || client.city);
+      const stateVal = project.useClientAddress ? client.state : (project.state || client.state);
+      const zipVal = project.useClientAddress ? client.zip : (project.zip || client.zip);
+      // Resolve custom text fields or fallback to defaults
+      const overview = doc.overview || project.description || '';
+      const scope = doc.scope || project.description || '';
+      const inclusions = doc.inclusions || 'Includes: materials, labor, equipment, standard site protection and debris haul.';
+      const exclusions = doc.exclusions || 'Excludes: interior finishes, structural framing, work below grade unless noted, and unforeseen conditions (handled via change order). Cold‑weather protection billed as needed.';
+      const scheduleTxt = doc.schedule || 'Estimated start: within 2–3 weeks of acceptance (weather permitting). Estimated duration on site: 1–2 weeks. Client to provide access to water and power.';
+      const warrantyTxt = doc.warranty || 'Workmanship warranted for one year. Manufacturer warranties apply to supplied materials. Efflorescence and hairline cracking are not considered defects.';
+      const termsTxt = doc.terms || 'Unforeseen or concealed conditions will be addressed via written change orders at contractor’s labor rate plus materials. Payments are due as scheduled; past‑due balances accrue 1.5% per month service charge. Materials remain property of contractor until paid in full. Contractor retains lien rights for unpaid work.';
+      // Payment schedule percentages
+      const payment = doc.paymentSchedule || { deposit: 30, progress: 40, balance: 30 };
+      // Determine line items: use custom items on the document if present, otherwise supply sample with kinds
+      const lineItems = (doc.lineItems && doc.lineItems.length > 0)
+        ? doc.lineItems
+        : [
+            { desc: 'Labor', qty: 40, unit: 'hr', price: 40, kind: 'Labor' },
+            { desc: 'Materials', qty: 1, unit: 'lot', price: 5000, kind: 'Material' },
+            { desc: 'Permit Fees', qty: 1, unit: 'lot', price: 400, kind: 'Other' }
+          ];
+      // Compute category totals
+      let materialsTotal = 0;
+      let laborTotal = 0;
+      let otherTotal = 0;
+      lineItems.forEach(i => {
+        const amt = i.qty * i.price;
+        if (i.kind === 'Material') {
+          materialsTotal += amt;
+        } else if (i.kind === 'Labor') {
+          laborTotal += amt;
+        } else {
+          otherTotal += amt;
+        }
+      });
+      const subTotal = materialsTotal + laborTotal + otherTotal;
+      // Determine sales tax rate. Use custom value from the document if provided (percentage), otherwise default to 5.5%.
+      const taxPercent = (typeof doc.taxRate === 'number' ? doc.taxRate : 5.5);
+      const taxRate = taxPercent / 100;
+      const materialsTax = materialsTotal * taxRate;
+      const grandTotal = subTotal + materialsTax;
+      // Payment amounts
+      const depositAmount = grandTotal * (payment.deposit / 100);
+      const progressAmount = grandTotal * (payment.progress / 100);
+      let balanceAmount = grandTotal - depositAmount - progressAmount;
+      if (balanceAmount < 0) balanceAmount = 0;
+      // Build table rows for line items
+      const itemsRows = lineItems.map(item => {
+        const lineTotal = item.qty * item.price;
+        return `<tr><td>${escapeHtml(item.desc)}</td><td>${item.qty}</td><td>${escapeHtml(item.unit)}</td><td>${formatCurrency(item.price)}</td><td>${formatCurrency(lineTotal)}</td></tr>`;
+      }).join('');
+      return `
+        <h1>PROPOSAL &amp; AGREEMENT</h1>
+        <p><strong>Proposal #:</strong> ${escapeHtml(doc.name)}<br>
+           <strong>Date:</strong> ${new Date().toLocaleDateString()}<br>
+           <strong>Estimator:</strong> ${escapeHtml(companyInfo.estimator)}</p>
+        <h2>Prepared For</h2>
+        <p><strong>Client:</strong> ${escapeHtml(client.name)}<br>
+           <strong>Property:</strong> ${escapeHtml(street)}<br>
+           ${escapeHtml(cityVal)}, ${escapeHtml(stateVal)} ${escapeHtml(zipVal || '')}<br>
+           <strong>Phone:</strong> ${escapeHtml(client.phone)}<br>
+           <strong>Email:</strong> ${escapeHtml(client.email)}</p>
+        <h2>Contractor</h2>
+        <p><strong>Company:</strong> ${escapeHtml(companyInfo.name)}<br>
+           ${escapeHtml(companyInfo.affiliation)}<br>
+           <strong>Office:</strong> ${escapeHtml(companyInfo.address)}, ${escapeHtml(companyInfo.city)}, ${escapeHtml(companyInfo.state)} ${escapeHtml(companyInfo.zip)}<br>
+           <strong>Contact:</strong> ${escapeHtml(companyInfo.phone)} • ${escapeHtml(companyInfo.email)}<br>
+           <strong>License/Ins.:</strong> ${escapeHtml(companyInfo.license)}<br>
+           ${escapeHtml(companyInfo.insurance)}</p>
+        <h2>Project Overview</h2>
+        <p>${escapeHtml(overview)}</p>
+        <h2>Scope of Work</h2>
+        <p>${escapeHtml(scope)}</p>
+        <h2>Inclusions &amp; Exclusions</h2>
+        <p>${escapeHtml(inclusions)}<br>
+           ${escapeHtml(exclusions)}</p>
+        <h2>Itemized Estimate</h2>
+        <table>
+          <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Rate</th><th>Amount</th></tr></thead>
+          <tbody>
+            ${itemsRows}
+          </tbody>
+        </table>
+        <div class="totals">
+          <p><strong>Materials Subtotal:</strong> ${formatCurrency(materialsTotal)}</p>
+          <p><strong>Labor Subtotal:</strong> ${formatCurrency(laborTotal)}</p>
+          <p><strong>Equipment/Permit Subtotal:</strong> ${formatCurrency(otherTotal)}</p>
+          <p><strong>Subtotal (before tax):</strong> ${formatCurrency(subTotal)}</p>
+          <p><strong>Sales Tax (materials only @ ${(taxRate * 100).toFixed(1)}%):</strong> ${formatCurrency(materialsTax)}</p>
+          <p><strong>Grand Total:</strong> ${formatCurrency(grandTotal)}</p>
+        </div>
+        <h2>Schedule &amp; Access</h2>
+        <p>${escapeHtml(scheduleTxt)}</p>
+        <h2>Warranty</h2>
+        <p>${escapeHtml(warrantyTxt)}</p>
+        <h2>Terms &amp; Conditions</h2>
+        <p>${escapeHtml(termsTxt)}</p>
+        <h2>Authorization &amp; Acceptance</h2>
+        <p>By signing below, the Client authorizes ${escapeHtml(companyInfo.name)} to perform the work described in this proposal. Upon Client signature, this proposal becomes a binding contract subject to the terms and conditions above.</p>
+        <p><strong>Accepted Amount:</strong> ${formatCurrency(grandTotal)}<br>
+           <strong>Deposit Due at Signing (${payment.deposit}%):</strong> ${formatCurrency(depositAmount)}<br>
+           <strong>Progress Draw at 50% Completion (${payment.progress}%):</strong> ${formatCurrency(progressAmount)}<br>
+           <strong>Balance on Completion (${payment.balance}%):</strong> ${formatCurrency(balanceAmount)}</p>
+        <p>Payment by check, ACH, or card (3% fee on cards). Prices valid 30 days from date above.</p>
+        <p>Printed Name ____________________________________ Date ____/____/______</p>
+        <p>Client Signature ________________________________ Contractor Representative ________________________________</p>
+      `;
+    }
+
+    /**
+     * Generate a simplified proposal. This version hides the line items and
+     * instead shows only the scope of work and the total price. It is useful
+     * when sharing a proposal without exposing detailed pricing breakdown.
+     */
+    function generateProposalSimple(project, doc) {
+      // Compute totals similar to detailed proposal but without listing item table
+      const client = getPersonById(project.clientId);
+      const street = project.useClientAddress ? client.address : (project.address || client.address);
+      const cityVal = project.useClientAddress ? client.city : (project.city || client.city);
+      const stateVal = project.useClientAddress ? client.state : (project.state || client.state);
+      const zipVal = project.useClientAddress ? client.zip : (project.zip || client.zip);
+      // Resolve custom text fields or fallback to defaults
+      const overview = doc.overview || project.description || '';
+      const scope = doc.scope || project.description || '';
+      const scheduleTxt = doc.schedule || 'Estimated start: within 2–3 weeks of acceptance (weather permitting). Estimated duration on site: 1–2 weeks. Client to provide access to water and power.';
+      const warrantyTxt = doc.warranty || 'Workmanship warranted for one year. Manufacturer warranties apply to supplied materials. Efflorescence and hairline cracking are not considered defects.';
+      const termsTxt = doc.terms || 'Unforeseen or concealed conditions will be addressed via written change orders at contractor’s labor rate plus materials. Payments are due as scheduled; past‑due balances accrue 1.5% per month service charge. Materials remain property of contractor until paid in full. Contractor retains lien rights for unpaid work.';
+      const payment = doc.paymentSchedule || { deposit: 30, progress: 40, balance: 30 };
+      // Determine line items: use doc items if present, else fallback sample with kind for tax
+      const lineItems = (doc.lineItems && doc.lineItems.length > 0)
+        ? doc.lineItems
+        : [
+            { desc: 'Labor', qty: 40, unit: 'hr', price: 40, kind: 'Labor' },
+            { desc: 'Materials', qty: 1, unit: 'lot', price: 5000, kind: 'Material' },
+            { desc: 'Permit Fees', qty: 1, unit: 'lot', price: 400, kind: 'Other' }
+          ];
+      let materialsTotal = 0;
+      let laborTotal = 0;
+      let otherTotal = 0;
+      lineItems.forEach(i => {
+        const amt = i.qty * i.price;
+        if (i.kind === 'Material') {
+          materialsTotal += amt;
+        } else if (i.kind === 'Labor') {
+          laborTotal += amt;
+        } else {
+          otherTotal += amt;
+        }
+      });
+      const subTotal = materialsTotal + laborTotal + otherTotal;
+      // Determine sales tax rate. Use custom value from the document if provided (percentage), otherwise default to 5.5%.
+      const taxPercent = (typeof doc.taxRate === 'number' ? doc.taxRate : 5.5);
+      const taxRate = taxPercent / 100;
+      const materialsTax = materialsTotal * taxRate;
+      const grandTotal = subTotal + materialsTax;
+      const depositAmount = grandTotal * (payment.deposit / 100);
+      const progressAmount = grandTotal * (payment.progress / 100);
+      let balanceAmount = grandTotal - depositAmount - progressAmount;
+      if (balanceAmount < 0) balanceAmount = 0;
+      return `
+        <h1>PROPOSAL &amp; AGREEMENT</h1>
+        <p><strong>Proposal #:</strong> ${escapeHtml(doc.name)}<br>
+           <strong>Date:</strong> ${new Date().toLocaleDateString()}<br>
+           <strong>Estimator:</strong> ${escapeHtml(companyInfo.estimator)}</p>
+        <h2>Prepared For</h2>
+        <p><strong>Client:</strong> ${escapeHtml(client.name)}<br>
+           <strong>Property:</strong> ${escapeHtml(street)}<br>
+           ${escapeHtml(cityVal)}, ${escapeHtml(stateVal)} ${escapeHtml(zipVal || '')}<br>
+           <strong>Phone:</strong> ${escapeHtml(client.phone)}<br>
+           <strong>Email:</strong> ${escapeHtml(client.email)}</p>
+        <h2>Contractor</h2>
+        <p><strong>Company:</strong> ${escapeHtml(companyInfo.name)}<br>
+           ${escapeHtml(companyInfo.affiliation)}<br>
+           <strong>Office:</strong> ${escapeHtml(companyInfo.address)}, ${escapeHtml(companyInfo.city)}, ${escapeHtml(companyInfo.state)} ${escapeHtml(companyInfo.zip)}<br>
+           <strong>Contact:</strong> ${escapeHtml(companyInfo.phone)} • ${escapeHtml(companyInfo.email)}<br>
+           <strong>License/Ins.:</strong> ${escapeHtml(companyInfo.license)}<br>
+           ${escapeHtml(companyInfo.insurance)}</p>
+        <h2>Project Overview</h2>
+        <p>${escapeHtml(overview)}</p>
+        <h2>Scope of Work</h2>
+        <p>${escapeHtml(scope)}</p>
+        <h2>Totals</h2>
+        <p><strong>Grand Total:</strong> ${formatCurrency(grandTotal)}</p>
+        <p><strong>Deposit Due at Signing (${payment.deposit}%):</strong> ${formatCurrency(depositAmount)}</p>
+        <p><strong>Progress Draw at 50% Completion (${payment.progress}%):</strong> ${formatCurrency(progressAmount)}</p>
+        <p><strong>Balance on Completion (${payment.balance}%):</strong> ${formatCurrency(balanceAmount)}</p>
+        <h2>Schedule &amp; Access</h2>
+        <p>${escapeHtml(scheduleTxt)}</p>
+        <h2>Warranty</h2>
+        <p>${escapeHtml(warrantyTxt)}</p>
+        <h2>Terms &amp; Conditions</h2>
+        <p>${escapeHtml(termsTxt)}</p>
+        <h2>Authorization &amp; Acceptance</h2>
+        <p>By signing below, the Client authorizes ${escapeHtml(companyInfo.name)} to perform the work described in this proposal. Upon Client signature, this proposal becomes a binding contract subject to the terms and conditions above.</p>
+        <p><strong>Accepted Amount:</strong> ${formatCurrency(grandTotal)}<br>
+           <strong>Deposit Due at Signing (${payment.deposit}%):</strong> ${formatCurrency(depositAmount)}<br>
+           <strong>Progress Draw at 50% Completion (${payment.progress}%):</strong> ${formatCurrency(progressAmount)}<br>
+           <strong>Balance on Completion (${payment.balance}%):</strong> ${formatCurrency(balanceAmount)}</p>
+        <p>Payment by check, ACH, or card (3% fee on cards). Prices valid 30 days from date above.</p>
+        <p>Printed Name ____________________________________ Date ____/____/______</p>
+        <p>Client Signature ________________________________ Contractor Representative ________________________________</p>
+      `;
+    }
+    function generateContract(project, doc) {
+      return `
+        <h1>CONTRACT</h1>
+        <p><strong>Project:</strong> ${escapeHtml(project.name)}<br>
+           <strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+        <h2>Parties</h2>
+        <p>This contract is between ${escapeHtml(getPersonById(project.clientId).name)} (Client) and Our Company (Contractor).</p>
+        <h2>Scope & Schedule</h2>
+        <p>${escapeHtml(project.description)}</p>
+        <h2>Price & Payment Schedule</h2>
+        <p>Total contract price is ${formatCurrency(project.amount)}. Payments to be made in installments.</p>
+        <h2>Change Orders</h2>
+        <p>Any changes to the scope or schedule will be handled through written Change Orders.</p>
+        <h2>Warranties & Insurance</h2>
+        <p>Contractor warrants that work will be performed to industry standards and shall maintain proper insurance.</p>
+        <h2>Dispute & Termination</h2>
+        <p>Any dispute shall be resolved by arbitration. Either party may terminate for cause with written notice.</p>
+        <h2>Signatures</h2>
+        <p>__________________________<br>Client Signature</p>
+        <p>__________________________<br>Contractor Signature</p>
+      `;
+    }
+    function generateChangeOrder(project, doc) {
+      /*
+       * Generate a change order document. The change order references an accepted
+       * proposal (parent) and contains a narrative description and per-item
+       * adjustments stored on the document. The new contract total is computed
+       * by adding the change cost to the original contract total.
+       */
+      // Retrieve the parent proposal (original contract) if it exists
+      const parent = project.documents.find(d => d.id === doc.parentId);
+      let parentTotal = 0;
+      if (parent && parent.lineItems && parent.lineItems.length > 0) {
+        parent.lineItems.forEach(i => { parentTotal += i.qty * i.price; });
+      } else {
+        parentTotal = project.amount;
+      }
+      // Determine change description and items from doc
+      const desc = doc.changeDesc || 'Description of changes requested.';
+      const items = (doc.changeItems && doc.changeItems.length > 0)
+        ? doc.changeItems.map(item => ({ desc: item.desc, qty: item.qty, unit: item.unit, price: item.price }))
+        : [];
+      // Compute change cost
+      let changeTotal = 0;
+      items.forEach(i => { changeTotal += i.qty * i.price; });
+      // Build items table if present
+      let itemsTable = '';
+      if (items.length > 0) {
+        itemsTable += '<h2>Change Items</h2>';
+        itemsTable += '<table><thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Unit Price</th><th>Total</th></tr></thead><tbody>';
+        items.forEach(item => {
+          itemsTable += `<tr><td>${escapeHtml(item.desc)}</td><td>${item.qty}</td><td>${escapeHtml(item.unit)}</td><td>${formatCurrency(item.price)}</td><td>${formatCurrency(item.qty * item.price)}</td></tr>`;
+        });
+        itemsTable += '</tbody></table>';
+        itemsTable += `<div class="totals"><strong>Change Total: ${formatCurrency(changeTotal)}</strong></div>`;
+      }
+      // Build new total section
+      const newTotal = parentTotal + changeTotal;
+      return `
+        <h1>CHANGE ORDER</h1>
+        <p><strong>Project:</strong> ${escapeHtml(project.name)}<br>
+           <strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+        <h2>Original Contract</h2>
+        <p>Associated with proposal: ${escapeHtml(parent ? parent.name : 'N/A')}</p>
+        <h2>Change Description</h2>
+        <p>${escapeHtml(desc)}</p>
+        ${itemsTable}
+        <h2>New Contract Total</h2>
+        <p>${formatCurrency(newTotal)}</p>
+        <h2>Signatures</h2>
+        <p>__________________________<br>Client Signature</p>
+        <p>__________________________<br>Contractor Signature</p>
+      `;
+    }
+    function generateInvoice(project, doc) {
+      // Use line items from the invoice document if available, otherwise
+      // fall back to a default sample list.
+      const items = (doc.lineItems && doc.lineItems.length > 0)
+        ? doc.lineItems.map(item => ({ desc: item.desc, qty: item.qty, unit: item.unit, price: item.price }))
+        : [
+          { desc: 'Labor', qty: 40, unit: 'hr', price: 40 },
+          { desc: 'Materials', qty: 1, unit: 'lot', price: 5000 },
+          { desc: 'Permit Fees', qty: 1, unit: 'lot', price: 400 }
+        ];
+      let subtotal = 0;
+      items.forEach(i => subtotal += i.qty * i.price);
+      // For now, retainage and previous payments are set to zero. In a more
+      // complete implementation these would reflect actual project payment
+      // progress.
+      const retainage = 0;
+      const previousPayments = 0;
+      const total = subtotal - previousPayments - retainage;
+      return `
+        <h1>INVOICE</h1>
+        <p><strong>Bill To:</strong> ${escapeHtml(getPersonById(project.clientId).name)}<br>
+           <strong>Project:</strong> ${escapeHtml(project.name)}<br>
+           <strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+        <h2>Line Items</h2>
+        <table>
+          <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Unit Price</th><th>Total</th></tr></thead>
+          <tbody>
+            ${items.map(item => `<tr>
+              <td>${escapeHtml(item.desc)}</td>
+              <td>${item.qty}</td>
+              <td>${escapeHtml(item.unit)}</td>
+              <td>${formatCurrency(item.price)}</td>
+              <td>${formatCurrency(item.qty * item.price)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        <div class="totals">
+          <p><strong>Subtotal:</strong> ${formatCurrency(subtotal)}</p>
+          <p><strong>Previous Payments:</strong> ${formatCurrency(previousPayments)}</p>
+          <p><strong>Retainage:</strong> ${formatCurrency(retainage)}</p>
+          <p><strong>Amount Due:</strong> ${formatCurrency(total)}</p>
+        </div>
+        <h2>Payment Instructions</h2>
+        <p>Please remit payment within 30 days to avoid late fees.</p>
+      `;
+    }
+    function generateReceipt(project, doc) {
+      // Determine amount paid from the associated invoice if available
+      let paidAmount = project.amount;
+      if (doc.parentId) {
+        const invoice = project.documents.find(d => d.id === doc.parentId);
+        if (invoice && invoice.lineItems && invoice.lineItems.length > 0) {
+          paidAmount = invoice.lineItems.reduce((sum, item) => sum + item.qty * item.price, 0);
+        }
+      }
+      return `
+        <h1>RECEIPT</h1>
+        <p><strong>Received From:</strong> ${escapeHtml(getPersonById(project.clientId).name)}<br>
+           <strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+        <h2>Project/Invoice Reference</h2>
+        <p>${escapeHtml(project.name)}</p>
+        <h2>Payment Details</h2>
+        <p>Payment of ${formatCurrency(paidAmount)} received in full.</p>
+        <h2>Updated Balance</h2>
+        <p>0.00 (Paid in full)</p>
+        <h2>Confirmation</h2>
+        <p>Thank you for your payment.</p>
+      `;
+    }
+    function generateLienWaiver(project, doc) {
+      // Determine payment amount from associated invoice if available. If the lien waiver
+      // references an invoice (via parentId), compute the total from that invoice's
+      // line items; otherwise fall back to the project amount.
+      let paymentAmount = project.amount;
+      if (doc.parentId) {
+        const invoice = project.documents.find(d => d.id === doc.parentId);
+        if (invoice && invoice.lineItems && invoice.lineItems.length > 0) {
+          paymentAmount = invoice.lineItems.reduce((sum, item) => sum + item.qty * item.price, 0);
+        }
+      }
+      return `
+        <h1>LIEN WAIVER</h1>
+        <p><strong>Project:</strong> ${escapeHtml(project.name)}<br>
+           <strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+        <h2>Parties & Project</h2>
+        <p>Between ${escapeHtml(getPersonById(project.clientId).name)} and Our Company regarding the above project.</p>
+        <h2>Reference</h2>
+        <p>This waiver relates to payments through the date shown above.</p>
+        <h2>Payment Amount & Through Date</h2>
+        <p>Payment amount: ${formatCurrency(paymentAmount)}; through date: ${new Date().toLocaleDateString()}.</p>
+        <h2>Waiver Language</h2>
+        <p>This is a conditional waiver upon progress payment. It becomes effective when the check clears.</p>
+        <h2>Reservations</h2>
+        <p>The undersigned reserves rights for retention and unpaid changes.</p>
+        <h2>Signatures/Notary</h2>
+        <p>__________________________<br>Authorized Signature</p>
+        <p>__________________________<br>Notary</p>
+      `;
+    }
+
+    /* New Document Modal and Estimate Wizard logic */
+    let currentProjectForDoc = null;
+    let currentEstimateItems = [];
+    let currentEstimateDocName = '';
+
+    function openNewDocModal(project) {
+      currentProjectForDoc = project;
+      const modal = document.getElementById('new-doc-modal');
+      // Populate options
+      const selectEl = document.getElementById('doc-type-select');
+      selectEl.innerHTML = '';
+      Object.keys(docDefinitions).forEach(type => {
+        const opt = document.createElement('option');
+        opt.value = type;
+        opt.textContent = type;
+        selectEl.appendChild(opt);
+      });
+      // Default document name
+      const defaultType = selectEl.value;
+      const nameInput = document.getElementById('doc-name-input');
+      nameInput.value = defaultType + ' #' + (project.documents.filter(d => d.type === defaultType).length + 1);
+      // Clear extra fields container
+      const extraContainer = document.getElementById('doc-extra-container');
+      /**
+       * Update the extra section of the modal depending on the selected type.
+       * For Change Orders and Invoices, a parent proposal must be selected.
+       */
+      function updateExtra() {
+        const type = selectEl.value;
+        extraContainer.innerHTML = '';
+        if (type === 'Change Order' || type === 'Invoice') {
+          // Find accepted proposals for this project
+          const proposals = project.documents.filter(d => d.type === 'Proposal' && d.status === 'Accepted' && !d.archived);
+          if (proposals.length === 0) {
+            const msg = document.createElement('div');
+            msg.style.color = 'red';
+            msg.style.marginTop = '8px';
+            msg.textContent = 'No accepted proposals available. Please accept a proposal first.';
+            extraContainer.appendChild(msg);
+          } else {
+            const label = document.createElement('label');
+            label.textContent = 'Select Proposal';
+            label.setAttribute('for', 'parent-proposal-select');
+            label.style.display = 'block';
+            label.style.marginBottom = '4px';
+            const selectParent = document.createElement('select');
+            selectParent.id = 'parent-proposal-select';
+            selectParent.style.width = '100%';
+            selectParent.style.padding = '6px';
+            proposals.forEach(d => {
+              const opt = document.createElement('option');
+              opt.value = d.id;
+              opt.textContent = d.name;
+              selectParent.appendChild(opt);
+            });
+            extraContainer.appendChild(label);
+            extraContainer.appendChild(selectParent);
+          }
+        }
+      }
+      // Initial call to build extra content
+      updateExtra();
+      // Show name field by default
+      document.getElementById('doc-name-container').style.display = '';
+      // Show modal
+      modal.classList.add('show');
+      trapFocus(modal);
+      // Change event for select: update default name and extra section
+      selectEl.onchange = () => {
+        const type = selectEl.value;
+        nameInput.value = type + ' #' + (project.documents.filter(d => d.type === type).length + 1);
+        updateExtra();
+      };
+    }
+    function closeNewDocModal() {
+      const modal = document.getElementById('new-doc-modal');
+      modal.classList.remove('show');
+      // Remove trap focus handler
+      if (focusTrapHandler) {
+        document.removeEventListener('keydown', focusTrapHandler);
+        focusTrapHandler = null;
+      }
+    }
+    // Bind create and cancel buttons for new doc modal
+    document.getElementById('cancel-doc-btn').addEventListener('click', () => {
+      closeNewDocModal();
+    });
+    document.getElementById('create-doc-btn').addEventListener('click', () => {
+      const selectEl = document.getElementById('doc-type-select');
+      const type = selectEl.value;
+      const name = document.getElementById('doc-name-input').value.trim();
+      if (!type) return;
+      // Close the modal immediately; subsequent logic will add documents as needed.
+      closeNewDocModal();
+      if (type === 'Proposal') {
+        // Launch proposal wizard to build a new proposal (estimate)
+        openProposalWizard(currentProjectForDoc, name);
+      } else if (type === 'Change Order') {
+        // Change orders must be associated with an accepted proposal
+        const parentSelect = document.getElementById('parent-proposal-select');
+        let parentId = null;
+        if (parentSelect) parentId = parseInt(parentSelect.value);
+        if (!parentId) {
+          alert('Please select an accepted proposal to associate with this change order.');
+          return;
+        }
+        // Create change order with a parentId property
+        const changeDoc = createDocument(currentProjectForDoc.id, 'Change Order', name, { parentId });
+        currentProjectForDoc.documents.push(changeDoc);
+        // Refresh project detail and switch to documents tab
+        renderProjectDetail(currentProjectForDoc);
+        const buttons = document.getElementById('project-tabs').querySelectorAll('button');
+        buttons.forEach(btn => {
+          if (btn.getAttribute('data-tab') === 'documents') btn.click();
+        });
+      } else if (type === 'Invoice') {
+        // Invoices require an accepted proposal. Copy its line items.
+        const parentSelect = document.getElementById('parent-proposal-select');
+        let parentId = null;
+        if (parentSelect) parentId = parseInt(parentSelect.value);
+        if (!parentId) {
+          alert('Please select an accepted proposal to generate an invoice from.');
+          return;
+        }
+        const parentDoc = currentProjectForDoc.documents.find(d => d.id === parentId);
+        const items = (parentDoc && parentDoc.lineItems) ? parentDoc.lineItems.map(item => ({ desc: item.desc, qty: item.qty, unit: item.unit, price: item.price })) : [];
+        // Create invoice document with line items and parentId
+        const invoiceDoc = createDocument(currentProjectForDoc.id, 'Invoice', name, { parentId, lineItems: items });
+        currentProjectForDoc.documents.push(invoiceDoc);
+        // Automatically create receipt and lien waiver associated with this invoice
+        const receiptName = 'Receipt #' + (currentProjectForDoc.documents.filter(d => d.type === 'Receipt').length + 1);
+        const receiptDoc = createDocument(currentProjectForDoc.id, 'Receipt', receiptName, { parentId: invoiceDoc.id });
+        currentProjectForDoc.documents.push(receiptDoc);
+        const lienName = 'Lien Waiver #' + (currentProjectForDoc.documents.filter(d => d.type === 'Lien Waiver').length + 1);
+        const lienDoc = createDocument(currentProjectForDoc.id, 'Lien Waiver', lienName, { parentId: invoiceDoc.id });
+        currentProjectForDoc.documents.push(lienDoc);
+        // Refresh project detail and switch to documents tab
+        renderProjectDetail(currentProjectForDoc);
+        const buttons = document.getElementById('project-tabs').querySelectorAll('button');
+        buttons.forEach(btn => {
+          if (btn.getAttribute('data-tab') === 'documents') btn.click();
+        });
+      } else {
+        // For any other doc types (e.g. Receipt or Lien Waiver) just create normally
+        const doc = createDocument(currentProjectForDoc.id, type, name);
+        currentProjectForDoc.documents.push(doc);
+        renderProjectDetail(currentProjectForDoc);
+        const buttons = document.getElementById('project-tabs').querySelectorAll('button');
+        buttons.forEach(btn => {
+          if (btn.getAttribute('data-tab') === 'documents') btn.click();
+        });
+      }
+    });
+
+    function openProposalWizard(project, docName) {
+      // Initialize data for the proposal wizard. Reset selected items and
+      // determine a default name if none was provided. The wizard lives in
+      // the element with id="proposal-wizard".
+      currentEstimateItems = [];
+      currentEstimateDocName = docName || 'Proposal #' + (project.documents.filter(d => d.type === 'Proposal').length + 1);
+      const wizardOverlay = document.getElementById('proposal-wizard');
+      const tbody = document.getElementById('wizard-product-table').querySelector('tbody');
+      tbody.innerHTML = '';
+      // Populate product rows
+      state.products.forEach(prod => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${escapeHtml(prod.name)}</td><td>${escapeHtml(prod.unit)}</td><td>${formatCurrency(prod.price)}</td>` +
+          `<td><input type="number" min="0" step="1" data-prod-id="${prod.id}" style="width:80px;"></td>`;
+        tbody.appendChild(tr);
+      });
+      // Clear summary
+      document.getElementById('wizard-summary').innerHTML = '';
+      // Prefill additional details fields with sensible defaults
+      // Use the project description as a starting point for both overview and scope
+      document.getElementById('proposal-overview').value = project.description || '';
+      document.getElementById('proposal-scope').value = project.description || '';
+      // Default inclusions and exclusions similar to the sample agreement
+      document.getElementById('proposal-inclusions').value = 'Includes: materials, labor, equipment, standard site protection and debris haul.';
+      document.getElementById('proposal-exclusions').value = 'Excludes: interior finishes, structural framing, work below grade unless noted, and unforeseen conditions (handled via change order). Cold‑weather protection billed as needed.';
+      // Default payment schedule of 30/40 percent for deposit and progress draws
+      document.getElementById('proposal-deposit').value = 30;
+      document.getElementById('proposal-progress').value = 40;
+      // Default schedule, warranty, and terms text
+      document.getElementById('proposal-schedule').value = 'Estimated start: within 2–3 weeks of acceptance (weather permitting). Estimated duration on site: 1–2 weeks. Client to provide access to water and power.';
+      document.getElementById('proposal-warranty').value = 'Workmanship warranted for one year. Manufacturer warranties apply to supplied materials. Efflorescence and hairline cracking are not considered defects.';
+      document.getElementById('proposal-terms').value = 'Unforeseen or concealed conditions will be addressed via written change orders at contractor’s labor rate plus materials. Payments are due as scheduled; past‑due balances accrue 1.5% per month service charge. Materials remain property of contractor until paid in full. Contractor retains lien rights for unpaid work.';
+      // Show wizard overlay
+      wizardOverlay.classList.add('show');
+      trapFocus(wizardOverlay);
+      // Attach input handlers to update summary
+      tbody.querySelectorAll('input[type="number"]').forEach(input => {
+        input.addEventListener('input', updateEstimateSummary);
+      });
+      // Cancel and finish button handlers
+      document.getElementById('cancel-wizard-btn').onclick = () => {
+        wizardOverlay.classList.remove('show');
+        // Remove focus trap
+        if (focusTrapHandler) {
+          document.removeEventListener('keydown', focusTrapHandler);
+          focusTrapHandler = null;
+        }
+      };
+      document.getElementById('finish-wizard-btn').onclick = () => {
+        // Collect selected items along with their kind for materials/labor classification
+        currentEstimateItems = [];
+        tbody.querySelectorAll('input[type="number"]').forEach(input => {
+          const qty = parseFloat(input.value);
+          const pid = parseInt(input.getAttribute('data-prod-id'));
+          if (!isNaN(qty) && qty > 0) {
+            const prod = getProductById(pid);
+            currentEstimateItems.push({
+              desc: prod.name,
+              qty: qty,
+              unit: prod.unit,
+              price: prod.price,
+              kind: prod.kind
+            });
+          }
+        });
+        // Gather additional fields from the wizard form
+        const overviewVal = document.getElementById('proposal-overview').value.trim();
+        const scopeVal = document.getElementById('proposal-scope').value.trim();
+        const inclusionsVal = document.getElementById('proposal-inclusions').value.trim();
+        const exclusionsVal = document.getElementById('proposal-exclusions').value.trim();
+        let depositPercent = parseFloat(document.getElementById('proposal-deposit').value);
+        let progressPercent = parseFloat(document.getElementById('proposal-progress').value);
+        if (isNaN(depositPercent)) depositPercent = 30;
+        if (isNaN(progressPercent)) progressPercent = 40;
+        // Ensure percentages are within 0-100 and compute balance
+        if (depositPercent < 0) depositPercent = 0;
+        if (progressPercent < 0) progressPercent = 0;
+        if (depositPercent > 100) depositPercent = 100;
+        if (progressPercent > 100) progressPercent = 100;
+        let balancePercent = 100 - depositPercent - progressPercent;
+        if (balancePercent < 0) balancePercent = 0;
+        const scheduleVal = document.getElementById('proposal-schedule').value.trim();
+        const warrantyVal = document.getElementById('proposal-warranty').value.trim();
+        const termsVal = document.getElementById('proposal-terms').value.trim();
+        // Retrieve the sales tax percentage entered by the user. This is applied only to materials.
+        let taxPercent = parseFloat(document.getElementById('proposal-tax').value);
+        if (isNaN(taxPercent) || taxPercent < 0) {
+          taxPercent = 5.5;
+        }
+        // Create document with custom line items and additional details. We use type 'Proposal'
+        // since an accepted proposal becomes the contract.
+        const doc = createDocument(project.id, 'Proposal', currentEstimateDocName, {
+          lineItems: currentEstimateItems,
+          overview: overviewVal,
+          scope: scopeVal,
+          inclusions: inclusionsVal,
+          exclusions: exclusionsVal,
+          paymentSchedule: { deposit: depositPercent, progress: progressPercent, balance: balancePercent },
+          schedule: scheduleVal,
+          warranty: warrantyVal,
+          terms: termsVal,
+          taxRate: taxPercent,
+          address: project.address
+        });
+        project.documents.push(doc);
+        // Close wizard
+        wizardOverlay.classList.remove('show');
+        if (focusTrapHandler) {
+          document.removeEventListener('keydown', focusTrapHandler);
+          focusTrapHandler = null;
+        }
+        // Re-render details and switch to documents tab
+        renderProjectDetail(project);
+        const buttons = document.getElementById('project-tabs').querySelectorAll('button');
+        buttons.forEach(btn => {
+          if (btn.getAttribute('data-tab') === 'documents') btn.click();
+        });
+      };
+    }
+
+    function updateEstimateSummary() {
+      const tbody = document.getElementById('wizard-product-table').querySelector('tbody');
+      const summaryDiv = document.getElementById('wizard-summary');
+      let selected = [];
+      let total = 0;
+      tbody.querySelectorAll('input[type="number"]').forEach(input => {
+        const qty = parseFloat(input.value);
+        if (!isNaN(qty) && qty > 0) {
+          const pid = parseInt(input.getAttribute('data-prod-id'));
+          const prod = getProductById(pid);
+          const lineTotal = qty * prod.price;
+          selected.push({ name: prod.name, unit: prod.unit, qty: qty, price: prod.price, total: lineTotal });
+          total += lineTotal;
+        }
+      });
+      if (selected.length === 0) {
+        summaryDiv.innerHTML = '<em>No items selected.</em>';
+        return;
+      }
+      let html = '<table style="width:100%; border-collapse:collapse;">';
+      html += '<thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Unit Price</th><th>Total</th></tr></thead><tbody>';
+      selected.forEach(item => {
+        html += `<tr><td>${escapeHtml(item.name)}</td><td>${item.qty}</td><td>${escapeHtml(item.unit)}</td><td>${formatCurrency(item.price)}</td><td>${formatCurrency(item.total)}</td></tr>`;
+      });
+      html += '</tbody></table>';
+      html += `<p style="text-align:right;margin-top:8px;"><strong>Total: ${formatCurrency(total)}</strong></p>`;
+      summaryDiv.innerHTML = html;
+    }
+
+    /*
+     * Enhanced detail rendering functions
+     * These overrides add editing capabilities, notes with timestamps, and document created dates.
+     */
+    function renderPersonDetail(person) {
+      const header = document.getElementById('drawer-header');
+      const content = document.getElementById('drawer-content');
+      header.innerHTML = `<h2>${escapeHtml(person.name)}</h2><div class="subline">${escapeHtml(person.type)}</div>`;
+      // Build tabs structure
+      let html = '';
+      html += `<div class="detail-tabs" id="person-tabs">
+                 <button data-tab="contact" class="active">Contact</button>
+                 <button data-tab="notes">Notes</button>
+                 <button data-tab="projects">Projects</button>
+                 <button data-tab="documents">Documents</button>
+               </div>`;
+      html += `<div id="person-contact" class="tab-content"></div>`;
+      html += `<div id="person-notes" class="tab-content" style="display:none;"></div>`;
+      html += `<div id="person-projects" class="tab-content" style="display:none;"></div>`;
+      html += `<div id="person-documents" class="tab-content" style="display:none;"></div>`;
+      content.innerHTML = html;
+      // Tab switching
+      const tabContainer = document.getElementById('person-tabs');
+      tabContainer.addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') {
+          const tab = e.target.getAttribute('data-tab');
+          tabContainer.querySelectorAll('button').forEach(btn => btn.classList.toggle('active', btn.getAttribute('data-tab') === tab));
+          ['contact','notes','projects','documents'].forEach(t => {
+            document.getElementById('person-' + t).style.display = (t === tab) ? '' : 'none';
+          });
+        }
+      });
+      // Render individual tab content
+      function renderContact() {
+        const container = document.getElementById('person-contact');
+        // Check if in edit mode
+        if (!person._editingContact) {
+          let cHtml = '<div class="detail-section">';
+          cHtml += `<h3>Contact Details</h3>`;
+          cHtml += `<div class="detail-info">
+                      <strong>Email:</strong> <a href="mailto:${escapeHtml(person.email)}">${escapeHtml(person.email)}</a><br>
+                      <strong>Phone:</strong> <a href="tel:${escapeHtml(person.phone)}">${escapeHtml(person.phone)}</a><br>
+                      <strong>Address:</strong> ${escapeHtml(person.address)}<br>
+                      <strong>City/State/ZIP:</strong> ${escapeHtml(person.city)}, ${escapeHtml(person.state)} ${escapeHtml(person.zip || '')}
+                    </div>`;
+          cHtml += `<button id="edit-contact-btn" style="margin-top:12px;">Edit</button>`;
+          cHtml += '</div>';
+          container.innerHTML = cHtml;
+          document.getElementById('edit-contact-btn').addEventListener('click', () => {
+            person._editingContact = true;
+            renderContact();
+          });
+        } else {
+          // Edit form
+          let formHtml = '<div class="detail-section">';
+          formHtml += `<h3>Edit Contact</h3>`;
+          formHtml += `<div class="detail-info">
+                        <label>Name<br><input type="text" id="edit-person-name" value="${escapeHtml(person.name)}" style="width:100%; margin-bottom:8px;"></label>
+                        <label>Type<br><select id="edit-person-type" style="width:100%; margin-bottom:8px;">
+                          <option value="Client">Client</option>
+                          <option value="Contractor">Contractor</option>
+                          <option value="Vendor">Vendor</option>
+                          <option value="Subcontractor">Subcontractor</option>
+                        </select></label>
+                        <label>Email<br><input type="email" id="edit-person-email" value="${escapeHtml(person.email)}" style="width:100%; margin-bottom:8px;"></label>
+                        <label>Phone<br><input type="tel" id="edit-person-phone" value="${escapeHtml(person.phone)}" style="width:100%; margin-bottom:8px;"></label>
+                        <label>Address<br><input type="text" id="edit-person-address" value="${escapeHtml(person.address || '')}" style="width:100%; margin-bottom:8px;"></label>
+                        <label>City<br><input type="text" id="edit-person-city" value="${escapeHtml(person.city)}" style="width:100%; margin-bottom:8px;"></label>
+                        <label>State<br><input type="text" id="edit-person-state" value="${escapeHtml(person.state)}" style="width:100%; margin-bottom:8px;"></label>
+                        <label>ZIP<br><input type="text" id="edit-person-zip" value="${escapeHtml(person.zip || '')}" style="width:100%; margin-bottom:8px;"></label>
+                      </div>`;
+          formHtml += `<div style="margin-top:12px;"><button id="save-contact-btn">Save</button> <button id="cancel-contact-btn">Cancel</button></div>`;
+          formHtml += '</div>';
+          container.innerHTML = formHtml;
+          // set selected value for type
+          const typeSelect = document.getElementById('edit-person-type');
+          typeSelect.value = person.type;
+          document.getElementById('save-contact-btn').addEventListener('click', () => {
+            // Save updates
+            person.name = document.getElementById('edit-person-name').value.trim();
+            person.type = document.getElementById('edit-person-type').value;
+            person.email = document.getElementById('edit-person-email').value.trim();
+            person.phone = document.getElementById('edit-person-phone').value.trim();
+            person.address = document.getElementById('edit-person-address').value.trim();
+            person.city = document.getElementById('edit-person-city').value.trim();
+            person.state = document.getElementById('edit-person-state').value.trim();
+            person.zip = document.getElementById('edit-person-zip').value.trim();
+            person._editingContact = false;
+            // Update dependent projects addresses if they use client address
+            state.projects.forEach(pr => {
+              if (pr.clientId === person.id && pr.useClientAddress) {
+                pr.address = person.address;
+                pr.city = person.city;
+                pr.state = person.state;
+                pr.zip = person.zip;
+              }
+            });
+            // Rerender lists so that updated information appears in the UI
+            renderPeople();
+            renderProjects();
+            renderPersonDetail(person);
+          });
+          document.getElementById('cancel-contact-btn').addEventListener('click', () => {
+            person._editingContact = false;
+            renderContact();
+          });
+        }
+      }
+      function renderNotes() {
+        const container = document.getElementById('person-notes');
+        let nHtml = '<div class="detail-section">';
+        nHtml += '<h3>Notes</h3>';
+        // Add note input
+        nHtml += `<div class="detail-info" style="margin-bottom:8px;">
+                    <input type="text" id="new-note-text" placeholder="Add a note..." style="width:80%; padding:6px;">
+                    <button id="add-note-btn" style="margin-left:6px;">Add</button>
+                  </div>`;
+        // List of notes
+        if (!person.notes || person.notes.length === 0) {
+          nHtml += '<div class="detail-info">No notes yet.</div>';
+        } else {
+          nHtml += '<ul style="list-style:none;padding-left:0;">';
+          person.notes.forEach((note, idx) => {
+            nHtml += `<li style="margin-bottom:8px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                          <div>
+                            ${escapeHtml(note.text)}<br>
+                            <small style="color:#666;">${escapeHtml(formatDateTime(note.created))}</small>
+                          </div>
+                          <button data-note-index="${idx}" class="delete-note-btn" aria-label="Delete note">🗑️</button>
+                        </div>
+                      </li>`;
+          });
+          nHtml += '</ul>';
+        }
+        nHtml += '</div>';
+        container.innerHTML = nHtml;
+        // Add event listeners
+        container.querySelector('#add-note-btn').addEventListener('click', () => {
+          const input = container.querySelector('#new-note-text');
+          const text = input.value.trim();
+          if (!text) return;
+          if (!person.notes) person.notes = [];
+          person.notes.push({ text: text, created: new Date() });
+          input.value = '';
+          renderNotes();
+        });
+        // Delete note buttons
+        container.querySelectorAll('.delete-note-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const idx = parseInt(btn.getAttribute('data-note-index'));
+            if (confirm('Delete this note?')) {
+              person.notes.splice(idx, 1);
+              renderNotes();
+            }
+          });
+        });
+      }
+      function renderProjectsTab() {
+        const container = document.getElementById('person-projects');
+        const relatedProjects = state.projects.filter(pr => pr.clientId === person.id);
+        let pHtml = '<div class="detail-section">';
+        pHtml += '<h3>Projects</h3>';
+        if (relatedProjects.length === 0) {
+          pHtml += '<div class="detail-info">No related projects.</div>';
+        } else {
+          pHtml += '<ul style="list-style:none;padding-left:0;">';
+          relatedProjects.forEach(pr => {
+            pHtml += `<li style="margin-bottom:4px;"><a href="#" data-type="project" data-id="${pr.id}">${escapeHtml(pr.name)}</a></li>`;
+          });
+          pHtml += '</ul>';
+        }
+        pHtml += '</div>';
+        container.innerHTML = pHtml;
+        // click on project link to open
+        container.querySelectorAll('a[data-type="project"]').forEach(a => {
+          a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const projId = parseInt(a.getAttribute('data-id'));
+            closeDetail();
+            setTimeout(() => openDetail('project', projId), 10);
+          });
+        });
+      }
+      function renderDocumentsTab() {
+        const container = document.getElementById('person-documents');
+        let docs = [];
+        state.projects.forEach(pr => {
+          if (pr.clientId === person.id) {
+            pr.documents.forEach(doc => {
+              if (!doc.archived) docs.push({ doc, project: pr });
+            });
+          }
+        });
+        let dHtml = '<div class="detail-section">';
+        dHtml += '<h3>Documents</h3>';
+        if (docs.length === 0) {
+          dHtml += '<div class="detail-info">No related documents.</div>';
+        } else {
+          dHtml += '<table class="doc-list"><thead><tr><th>Project</th><th>Type</th><th>Name</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody>';
+          docs.forEach(item => {
+            dHtml += `<tr>
+                    <td>${escapeHtml(item.project.name)}</td>
+                    <td>${escapeHtml(item.doc.type)}</td>
+                    <td>${escapeHtml(item.doc.name)}</td>
+                    <td>${escapeHtml(item.doc.status)}</td>
+                    <td>${escapeHtml(formatDateTime(item.doc.created))}</td>
+                    <td><div class="doc-actions"><button data-action="preview" data-proj-id="${item.project.id}" data-doc-id="${item.doc.id}">Preview</button></div></td>
+                 </tr>`;
+          });
+          dHtml += '</tbody></table>';
+        }
+        dHtml += '</div>';
+        container.innerHTML = dHtml;
+        // preview actions
+        container.querySelectorAll('.doc-actions button[data-action="preview"]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const projId = parseInt(btn.getAttribute('data-proj-id'));
+            const docId = parseInt(btn.getAttribute('data-doc-id'));
+            const project = getProjectById(projId);
+            const doc = project.documents.find(d => d.id === docId);
+            openPreview(project, doc);
+          });
+        });
+      }
+      // initial render
+      renderContact();
+      renderNotes();
+      renderProjectsTab();
+      renderDocumentsTab();
+    }
+
+    function renderProductDetail(product) {
+      const header = document.getElementById('drawer-header');
+      const content = document.getElementById('drawer-content');
+      header.innerHTML = `<h2>${escapeHtml(product.name)}</h2>
+                          <div class="subline">${escapeHtml(product.kind)} &bull; Unit: ${escapeHtml(product.unit)} &bull; Price: ${formatCurrency(product.price)}</div>`;
+      // Build details section with optional edit mode
+      let html = '<div class="detail-section">';
+      html += '<h3>Product Details</h3>';
+      if (!product._editing) {
+        html += `<div class="detail-info">
+                    <strong>Type:</strong> ${escapeHtml(product.kind)}<br>
+                    <strong>Unit:</strong> ${escapeHtml(product.unit)}<br>
+                    <strong>Price:</strong> ${formatCurrency(product.price)}
+                 </div>`;
+        html += `<button id="product-edit-btn" style="margin-top:12px;">Edit</button>`;
+      } else {
+        html += `<div class="detail-info">
+                    <label>Name<br><input type="text" id="edit-product-name" value="${escapeHtml(product.name)}" style="width:100%; margin-bottom:8px;"></label>
+                    <label>Type<br><select id="edit-product-kind" style="width:100%; margin-bottom:8px;">
+                      <option value="Material">Material</option>
+                      <option value="Labor">Labor</option>
+                    </select></label>
+                    <label>Unit<br><input type="text" id="edit-product-unit" value="${escapeHtml(product.unit)}" style="width:100%; margin-bottom:8px;"></label>
+                    <label>Price<br><input type="number" step="0.01" id="edit-product-price" value="${product.price}" style="width:100%; margin-bottom:8px;"></label>
+                  </div>`;
+        html += `<div style="margin-top:12px;"><button id="save-product-btn">Save</button> <button id="cancel-product-btn">Cancel</button></div>`;
+      }
+      html += '</div>';
+      content.innerHTML = html;
+      if (!product._editing) {
+        const editBtn = document.getElementById('product-edit-btn');
+        editBtn.addEventListener('click', () => {
+          product._editing = true;
+          renderProductDetail(product);
+        });
+      } else {
+        const kindSelect = document.getElementById('edit-product-kind');
+        kindSelect.value = product.kind;
+        document.getElementById('save-product-btn').addEventListener('click', () => {
+          product.name = document.getElementById('edit-product-name').value.trim();
+          product.kind = document.getElementById('edit-product-kind').value;
+          product.unit = document.getElementById('edit-product-unit').value.trim();
+          const priceVal = parseFloat(document.getElementById('edit-product-price').value);
+          product.price = isNaN(priceVal) ? product.price : priceVal;
+          product._editing = false;
+          renderProducts();
+          renderProductDetail(product);
+        });
+        document.getElementById('cancel-product-btn').addEventListener('click', () => {
+          product._editing = false;
+          renderProductDetail(product);
+        });
+      }
+    }
+
+    // Initialize
+    initData();
+    // Initial renders
+    renderProjects();
+
+    // When page loads, ensure correct section is shown (Projects by default)
+    window.addEventListener('load', () => {
+      switchTab('projects');
+    });
+  </script>
+</body>
+</html>
