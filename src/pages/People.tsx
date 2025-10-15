@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import useDocumentTitle from '../hooks/useDocumentTitle'
-
-// Local storage key for customers
-const STORAGE_KEY = 'b2b_customers_v1'
+import { useAuth } from '../hooks/useAuth'
+import { collection, addDoc, onSnapshot, query, orderBy } from 'firebase/firestore'
+import { db } from '../lib/firebase'
 
 // Image limits
 const MAX_IMAGES = 5
@@ -27,14 +27,6 @@ export type Customer = {
   updatedAt: string // ISO
 }
 
-function safeUUID() {
-  try {
-    return crypto.randomUUID()
-  } catch {
-    return String(Date.now())
-  }
-}
-
 function readFileAsDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -47,6 +39,7 @@ function readFileAsDataURL(file: File): Promise<string> {
 export default function People() {
   useDocumentTitle('People')
 
+  const { user } = useAuth()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [search, setSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -65,27 +58,28 @@ export default function People() {
 
   const [pictures, setPictures] = useState<string[]>([])
 
-  // Load from localStorage on mount
+  // Load from Firestore when user is signed in
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw) as Customer[]
-        if (Array.isArray(parsed)) setCustomers(parsed)
-      }
-    } catch (e) {
-      // ignore
+    if (!user) {
+      setCustomers([])
+      return
     }
-  }, [])
 
-  // Persist whenever customers change
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(customers))
-    } catch (e) {
-      // ignore
-    }
-  }, [customers])
+    const q = query(
+      collection(db, `users/${user.uid}/customers`),
+      orderBy('createdAt', 'desc')
+    )
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const loadedCustomers: Customer[] = []
+      snapshot.forEach((doc) => {
+        loadedCustomers.push({ id: doc.id, ...doc.data() } as Customer)
+      })
+      setCustomers(loadedCustomers)
+    })
+
+    return () => unsubscribe()
+  }, [user])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -153,7 +147,7 @@ export default function People() {
       setPictures((prev) => [...prev, ...dataUrls])
       setError(null)
       e.target.value = ''
-    } catch (err) {
+    } catch {
       setError('Could not read one or more images.')
       e.target.value = ''
     }
@@ -163,8 +157,13 @@ export default function People() {
     setPictures((prev) => prev.filter((_, i) => i !== idx))
   }
 
-  function onSubmit(e: FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault()
+
+    if (!user) {
+      setError('Please sign in to add customers.')
+      return
+    }
 
     if (!form.firstName.trim() && !form.lastName.trim()) {
       setError('Please provide at least a first or last name.')
@@ -172,8 +171,7 @@ export default function People() {
     }
 
     const now = new Date().toISOString()
-    const customer: Customer = {
-      id: safeUUID(),
+    const customerData = {
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
       streetAddress: form.streetAddress.trim() || undefined,
@@ -188,22 +186,26 @@ export default function People() {
       updatedAt: now,
     }
 
-    setCustomers((prev) => [customer, ...prev])
+    try {
+      await addDoc(collection(db, `users/${user.uid}/customers`), customerData)
 
-    // Reset form
-    setForm({
-      firstName: '',
-      lastName: '',
-      streetAddress: '',
-      city: '',
-      state: '',
-      zip: '',
-      email: '',
-      phone: '',
-      notes: '',
-    })
-    setPictures([])
-    setError(null)
+      // Reset form
+      setForm({
+        firstName: '',
+        lastName: '',
+        streetAddress: '',
+        city: '',
+        state: '',
+        zip: '',
+        email: '',
+        phone: '',
+        notes: '',
+      })
+      setPictures([])
+      setError(null)
+    } catch {
+      setError('Failed to save customer. Please try again.')
+    }
   }
 
   function fullName(c: Customer) {
@@ -219,6 +221,12 @@ export default function People() {
   return (
     <div className="py-8">
       <h1 className="text-3xl font-bold text-neutral-800 mb-6">People</h1>
+
+      {!user && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+          <p className="text-amber-900">Please sign in to manage customers.</p>
+        </div>
+      )}
 
       {/* Add Customer */}
       <form onSubmit={onSubmit} className="bg-white border border-neutral-200 rounded-lg p-4 md:p-6 shadow-sm space-y-4 mb-8">
@@ -299,7 +307,11 @@ export default function People() {
         </div>
 
         <div className="pt-2">
-          <button type="submit" className="bg-sky-600 hover:bg-sky-700 text-white font-semibold px-4 py-2 rounded-md">
+          <button 
+            type="submit" 
+            disabled={!user}
+            className="bg-sky-600 hover:bg-sky-700 text-white font-semibold px-4 py-2 rounded-md disabled:bg-neutral-300 disabled:cursor-not-allowed"
+          >
             Save customer
           </button>
         </div>
