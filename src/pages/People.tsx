@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, ChangeEvent, FormEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
 import useDocumentTitle from '../hooks/useDocumentTitle'
 
 // Local storage key for customers
