@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import useDocumentTitle from '../hooks/useDocumentTitle'
 import { useAuth } from '../hooks/useAuth'
-import { collection, addDoc, onSnapshot, query, orderBy } from 'firebase/firestore'
-import { db } from '../lib/firebase'
+import { collection, addDoc, onSnapshot, query, orderBy, updateDoc, doc, serverTimestamp } from 'firebase/firestore'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { db, storage } from '../lib/firebase'
 
 // Image limits
 const MAX_IMAGES = 5
@@ -22,7 +23,7 @@ export type Customer = {
   email?: string
   phone?: string
   notes?: string
-  pictures: string[] // data URLs
+  pictures: string[] // download URLs from Storage
   createdAt: string // ISO
   updatedAt: string // ISO
 }
@@ -43,6 +44,7 @@ export default function People() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [search, setSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
 
   const [form, setForm] = useState({
     firstName: '',
@@ -57,6 +59,7 @@ export default function People() {
   })
 
   const [pictures, setPictures] = useState<string[]>([])
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
 
   // Load from Firestore when user is signed in
   useEffect(() => {
@@ -145,6 +148,7 @@ export default function People() {
     try {
       const dataUrls = await Promise.all(files.map(readFileAsDataURL))
       setPictures((prev) => [...prev, ...dataUrls])
+      setSelectedFiles((prev) => [...prev, ...files])
       setError(null)
       e.target.value = ''
     } catch {
@@ -155,6 +159,7 @@ export default function People() {
 
   function removePicture(idx: number) {
     setPictures((prev) => prev.filter((_, i) => i !== idx))
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== idx))
   }
 
   async function onSubmit(e: FormEvent) {
@@ -170,24 +175,50 @@ export default function People() {
       return
     }
 
-    const now = new Date().toISOString()
-    const customerData = {
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      streetAddress: form.streetAddress.trim() || undefined,
-      city: form.city.trim() || undefined,
-      state: form.state.trim() || undefined,
-      zip: form.zip.trim() || undefined,
-      email: form.email.trim() || undefined,
-      phone: form.phone.trim() || undefined,
-      notes: form.notes.trim() || undefined,
-      pictures: pictures.slice(0, MAX_IMAGES),
-      createdAt: now,
-      updatedAt: now,
-    }
+    setUploading(true)
+    setError(null)
 
     try {
-      await addDoc(collection(db, `users/${user.uid}/customers`), customerData)
+      // Step 1: Create Firestore doc with empty pictures array
+      const customerData = {
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        streetAddress: form.streetAddress.trim() || undefined,
+        city: form.city.trim() || undefined,
+        state: form.state.trim() || undefined,
+        zip: form.zip.trim() || undefined,
+        email: form.email.trim() || undefined,
+        phone: form.phone.trim() || undefined,
+        notes: form.notes.trim() || undefined,
+        pictures: [],
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }
+
+      const docRef = await addDoc(
+        collection(db, `users/${user.uid}/customers`),
+        customerData
+      )
+
+      // Step 2: Upload files to Storage (if any)
+      if (selectedFiles.length > 0) {
+        const uploadPromises = selectedFiles.slice(0, MAX_IMAGES).map(async (file) => {
+          const storageRef = ref(
+            storage,
+            `customer-images/${user.uid}/${docRef.id}/${file.name}`
+          )
+          await uploadBytes(storageRef, file)
+          return getDownloadURL(storageRef)
+        })
+
+        const downloadUrls = await Promise.all(uploadPromises)
+
+        // Step 3: Update Firestore doc with download URLs
+        await updateDoc(doc(db, `users/${user.uid}/customers`, docRef.id), {
+          pictures: downloadUrls,
+          updatedAt: serverTimestamp(),
+        })
+      }
 
       // Reset form
       setForm({
@@ -202,9 +233,21 @@ export default function People() {
         notes: '',
       })
       setPictures([])
+      setSelectedFiles([])
       setError(null)
-    } catch {
-      setError('Failed to save customer. Please try again.')
+    } catch (err) {
+      // Log detailed error to console
+      console.error('Failed to save customer:', err)
+      
+      // Extract Firebase error code if available
+      const fbError = err as { code?: string; message?: string }
+      const errorMsg = fbError.code
+        ? `Failed to save customer (${fbError.code}). Please try again.`
+        : 'Failed to save customer. Please try again.'
+      
+      setError(errorMsg)
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -309,10 +352,10 @@ export default function People() {
         <div className="pt-2">
           <button 
             type="submit" 
-            disabled={!user}
+            disabled={!user || uploading}
             className="bg-sky-600 hover:bg-sky-700 text-white font-semibold px-4 py-2 rounded-md disabled:bg-neutral-300 disabled:cursor-not-allowed"
           >
-            Save customer
+            {uploading ? 'Saving...' : 'Save customer'}
           </button>
         </div>
       </form>
