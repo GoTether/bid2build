@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react'
 import Container from './Container'
 import Navigation from './Navigation'
+import AuthButton from './AuthButton'
 
 interface ShellProps {
   children: ReactNode
@@ -16,6 +17,7 @@ export default function Shell({ children }: ShellProps) {
               <h1 className="text-xl font-bold text-neutral-800 mr-8">bid2build</h1>
               <Navigation />
             </div>
+            <AuthButton />
           </div>
         </Container>
       </header>
