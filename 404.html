@@ -1,14 +1,16 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html>
   <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="./vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>bid2build</title>
+    <meta charset="utf-8">
+    <title>Redirecting...</title>
+    <script type="text/javascript">
+      // Get the current path after /bid2build/
+      var path = window.location.pathname.replace(/^\/bid2build/, "");
+      // Redirect to /bid2build/ with the original path as hash for SPA router to use
+      window.location.replace("/bid2build/#" + path + window.location.search + window.location.hash);
+    </script>
   </head>
   <body>
-    <div id="root"></div>
-    <!-- Boot the same app so deep links resolve on GitHub Pages -->
-    <script type="module" src="/src/main.tsx"></script>
+    <p>Redirecting...</p>
   </body>
 </html>
