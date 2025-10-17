@@ -7,7 +7,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBXPL6hlivx2yidBz5WXK9cX64AniIJ8Bw",
   authDomain: "bid2build-d6d1c.firebaseapp.com",
   projectId: "bid2build-d6d1c",
-  storageBucket: "bid2build-d6d1c.appspot.com",
+ storageBucket: "bid2build-d6d1c.firebasestorage.app",
   messagingSenderId: "833302962979",
   appId: "1:833302962979:web:f8c877f4521bced144e296",
   measurementId: "G-J68M6LYK3Y"
