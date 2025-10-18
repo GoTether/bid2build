@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo, FormEvent, ChangeEvent } from "react";
+import { useEffect, useState, useMemo } from "react";
+import type { FormEvent, ChangeEvent } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { db } from "../lib/firebase";
 import {
