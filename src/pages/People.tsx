@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useMemo, ChangeEvent, FormEvent } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { db } from "../lib/firebase";
-import { collection, addDoc, onSnapshot, query, orderBy, doc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, doc, deleteDoc } from "firebase/firestore";
 
 type Customer = {
   id: string;
@@ -33,7 +33,6 @@ export default function People() {
   const { user } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
-  const [error, setError] = useState<string | null>(null);
 
   // Load customers from Firestore
   useEffect(() => {
