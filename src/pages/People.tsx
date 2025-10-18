@@ -276,6 +276,7 @@ export default function People() {
                       src={src}
                       alt={`thumbnail-${idx}`}
                       className="w-8 h-8 rounded object-cover border border-white shadow"
+                      style={{ width: "32px", height: "32px", objectFit: "cover" }}
                     />
                   ))}
                 </div>
