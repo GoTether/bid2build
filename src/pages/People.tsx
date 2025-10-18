@@ -1,7 +1,16 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, FormEvent, ChangeEvent } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { db } from "../lib/firebase";
-import { collection, onSnapshot, query, orderBy, doc, deleteDoc } from "firebase/firestore";
+import {
+  collection,
+  onSnapshot,
+  query,
+  orderBy,
+  doc,
+  deleteDoc,
+  addDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 
 type Customer = {
   id: string;
@@ -33,6 +42,21 @@ export default function People() {
   const { user } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
+
+  // Add-customer form state
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    streetAddress: "",
+    city: "",
+    state: "",
+    zip: "",
+    email: "",
+    phone: "",
+    notes: "",
+    pictures: "",
+  });
+  const [submitting, setSubmitting] = useState(false);
 
   // Load customers from Firestore
   useEffect(() => {
@@ -86,9 +110,144 @@ export default function People() {
     }
   }
 
+  async function handleAddCustomer(e: FormEvent) {
+    e.preventDefault();
+    if (!user) return;
+    setSubmitting(true);
+    try {
+      const docData = {
+        ...form,
+        pictures: form.pictures
+          ? form.pictures
+              .split(",")
+              .map((s) => s.trim())
+              .filter((s) => !!s)
+          : [],
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+      await addDoc(collection(db, `users/${user.uid}/customers`), docData);
+      setForm({
+        firstName: "",
+        lastName: "",
+        streetAddress: "",
+        city: "",
+        state: "",
+        zip: "",
+        email: "",
+        phone: "",
+        notes: "",
+        pictures: "",
+      });
+    } catch (err) {
+      alert("Failed to add customer. See console for details.");
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function handleFormChange(
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) {
+    const { name, value } = e.target;
+    setForm((f) => ({ ...f, [name]: value }));
+  }
+
   return (
     <div className="py-8">
       <h1 className="text-3xl font-bold text-neutral-800 mb-6">People</h1>
+
+      {/* Add Customer Form */}
+      <form
+        className="mb-8 space-y-4 bg-white rounded-lg border border-neutral-200 p-6 shadow max-w-2xl"
+        onSubmit={handleAddCustomer}
+      >
+        <div className="flex flex-wrap gap-4">
+          <input
+            placeholder="First Name"
+            name="firstName"
+            value={form.firstName}
+            onChange={handleFormChange}
+            required
+            className="flex-1 min-w-[120px] rounded-md border border-neutral-300 px-3 py-2"
+          />
+          <input
+            placeholder="Last Name"
+            name="lastName"
+            value={form.lastName}
+            onChange={handleFormChange}
+            required
+            className="flex-1 min-w-[120px] rounded-md border border-neutral-300 px-3 py-2"
+          />
+          <input
+            placeholder="Email"
+            name="email"
+            type="email"
+            value={form.email}
+            onChange={handleFormChange}
+            className="flex-1 min-w-[160px] rounded-md border border-neutral-300 px-3 py-2"
+          />
+          <input
+            placeholder="Phone"
+            name="phone"
+            value={form.phone}
+            onChange={handleFormChange}
+            className="flex-1 min-w-[120px] rounded-md border border-neutral-300 px-3 py-2"
+          />
+        </div>
+        <div className="flex flex-wrap gap-4">
+          <input
+            placeholder="Street Address"
+            name="streetAddress"
+            value={form.streetAddress}
+            onChange={handleFormChange}
+            className="flex-1 min-w-[200px] rounded-md border border-neutral-300 px-3 py-2"
+          />
+          <input
+            placeholder="City"
+            name="city"
+            value={form.city}
+            onChange={handleFormChange}
+            className="flex-1 min-w-[120px] rounded-md border border-neutral-300 px-3 py-2"
+          />
+          <input
+            placeholder="State"
+            name="state"
+            value={form.state}
+            onChange={handleFormChange}
+            className="w-24 rounded-md border border-neutral-300 px-3 py-2"
+          />
+          <input
+            placeholder="Zip"
+            name="zip"
+            value={form.zip}
+            onChange={handleFormChange}
+            className="w-24 rounded-md border border-neutral-300 px-3 py-2"
+          />
+        </div>
+        <textarea
+          placeholder="Notes"
+          name="notes"
+          value={form.notes}
+          onChange={handleFormChange}
+          className="w-full rounded-md border border-neutral-300 px-3 py-2"
+        />
+        <input
+          placeholder="Pictures (comma-separated URLs)"
+          name="pictures"
+          value={form.pictures}
+          onChange={handleFormChange}
+          className="w-full rounded-md border border-neutral-300 px-3 py-2"
+        />
+        <button
+          type="submit"
+          disabled={submitting}
+          className="bg-sky-600 hover:bg-sky-700 text-white px-6 py-2 rounded font-semibold"
+        >
+          {submitting ? "Adding..." : "Add Customer"}
+        </button>
+      </form>
 
       {/* Search */}
       <div className="mb-4">
