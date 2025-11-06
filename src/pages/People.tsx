@@ -1,5 +1,6 @@
 // src/pages/People.tsx
-import React, { useEffect, useRef, useState, ChangeEvent, FormEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
 import { collection, addDoc, updateDoc, serverTimestamp, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../lib/firebase'
@@ -21,7 +22,7 @@ type Customer = {
 }
 
 export default function People() {
-  const { user, loading } = useAuth()
+  const { user } = useAuth()
 
   const [customers, setCustomers] = useState<Customer[]>([])
   const [submitting, setSubmitting] = useState(false)
