@@ -1,109 +1,228 @@
-// ... (all previous imports and code, unchanged)
+// src/pages/People.tsx
+import React, { useEffect, useRef, useState, ChangeEvent, FormEvent } from 'react'
+import { collection, addDoc, updateDoc, serverTimestamp, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore'
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { db, storage } from '../lib/firebase'
+import { useAuth } from '../hooks/useAuth'
+
+type Customer = {
+  id?: string
+  firstName?: string
+  lastName?: string
+  streetAddress?: string
+  city?: string
+  state?: string
+  zip?: string
+  email?: string
+  phone?: string
+  notes?: string
+  pictures?: string[]
+  createdAt?: any
+}
 
 export default function People() {
-  // ... all previous state and logic, unchanged
+  const { user, loading } = useAuth()
 
-  // Add a new state for the file input
-  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [submitting, setSubmitting] = useState(false)
+  const [photoFiles, setPhotoFiles] = useState<File[]>([])
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
-  // Update to handle file input change
+  const [form, setForm] = useState({
+    firstName: '',
+    lastName: '',
+    streetAddress: '',
+    city: '',
+    state: '',
+    zip: '',
+    email: '',
+    phone: '',
+    notes: '',
+    pictures: '', // optional comma-separated URLs
+  })
+
+  useEffect(() => {
+    if (!user) {
+      setCustomers([])
+      return
+    }
+
+    const q = query(collection(db, `users/${user.uid}/customers`), orderBy('createdAt', 'desc'))
+    const unsub = onSnapshot(q, (snapshot) => {
+      const items: Customer[] = []
+      snapshot.forEach((docSnap) => {
+        items.push({ id: docSnap.id, ...(docSnap.data() as any) })
+      })
+      setCustomers(items)
+    })
+
+    return () => unsub()
+  }, [user])
+
+  function handleFormChange(e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    const { name, value } = e.target as HTMLInputElement
+    setForm((prev) => ({ ...prev, [name]: value }))
+  }
+
   function handlePhotoFilesChange(e: ChangeEvent<HTMLInputElement>) {
-    if (!e.target.files) return;
-    setPhotoFiles(Array.from(e.target.files));
+    if (!e.target.files) return
+    setPhotoFiles(Array.from(e.target.files))
   }
 
   async function handleAddCustomer(e: FormEvent) {
-    e.preventDefault();
-    if (!user) return;
-    setSubmitting(true);
+    e.preventDefault()
+    if (!user) return
+    setSubmitting(true)
 
     try {
-      // Read all files as data URLs (base64)
-      const fileImagePromises = photoFiles.map(
-        (file) =>
-          new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          })
-      );
-      const fileImages = await Promise.all(fileImagePromises);
-
-      // Parse URLs from text field
-      const urlImages = form.pictures
-        ? form.pictures
-            .split(",")
-            .map((s) => s.trim())
-            .filter((s) => !!s)
-        : [];
-
-      // Combine both sources
-      const allImages = [...urlImages, ...fileImages];
-
-      const docData = {
-        ...form,
-        pictures: allImages,
+      // 1) create a new document so we have an id to put storage files under
+      const initialDocData = {
+        firstName: form.firstName,
+        lastName: form.lastName,
+        streetAddress: form.streetAddress,
+        city: form.city,
+        state: form.state,
+        zip: form.zip,
+        email: form.email,
+        phone: form.phone,
+        notes: form.notes,
+        pictures: [],
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      };
-      await addDoc(collection(db, `users/${user.uid}/customers`), docData);
+      }
+
+      const customersCollection = collection(db, `users/${user.uid}/customers`)
+      const newDocRef = await addDoc(customersCollection, initialDocData)
+
+      // 2) upload selected files (if any) to Firebase Storage and collect download URLs
+      const uploadedUrls: string[] = []
+      if (photoFiles && photoFiles.length > 0) {
+        for (const file of photoFiles) {
+          const filePath = `users/${user.uid}/customers/${newDocRef.id}/${Date.now()}_${file.name}`
+          const sRef = storageRef(storage, filePath)
+          await uploadBytes(sRef, file)
+          const downloadUrl = await getDownloadURL(sRef)
+          uploadedUrls.push(downloadUrl)
+        }
+      }
+
+      // 3) parse any comma-separated URLs from the pictures text field (optional)
+      const urlImages = form.pictures
+        ? form.pictures.split(',').map((s) => s.trim()).filter(Boolean)
+        : []
+
+      // 4) update the document with the combined list of images
+      const allImages = [...urlImages, ...uploadedUrls]
+      await updateDoc(newDocRef, {
+        pictures: allImages,
+        updatedAt: serverTimestamp(),
+      })
+
+      // 5) reset the form and file states
       setForm({
-        firstName: "",
-        lastName: "",
-        streetAddress: "",
-        city: "",
-        state: "",
-        zip: "",
-        email: "",
-        phone: "",
-        notes: "",
-        pictures: "",
-      });
-      setPhotoFiles([]);
+        firstName: '',
+        lastName: '',
+        streetAddress: '',
+        city: '',
+        state: '',
+        zip: '',
+        email: '',
+        phone: '',
+        notes: '',
+        pictures: '',
+      })
+      setPhotoFiles([])
+      if (fileInputRef.current) fileInputRef.current.value = ''
     } catch (err) {
-      alert("Failed to add customer. See console for details.");
-      console.error(err);
+      console.error('Failed to add customer', err)
+      alert('Failed to add customer. See console for details.')
     } finally {
-      setSubmitting(false);
+      setSubmitting(false)
     }
   }
 
-  // ... rest of the code remains unchanged
+  async function handleDeleteCustomer(item: Customer) {
+    if (!user || !item.id) return
+    try {
+      await deleteDoc(doc(db, `users/${user.uid}/customers/${item.id}`))
+    } catch (err) {
+      console.error('Failed to delete customer', err)
+      alert('Failed to delete customer. See console.')
+    }
+  }
 
   return (
     <div className="py-8">
       <h1 className="text-3xl font-bold text-neutral-800 mb-6">People</h1>
 
-      {/* Add Customer Form */}
       <form
         className="mb-8 space-y-4 bg-white rounded-lg border border-neutral-200 p-6 shadow max-w-2xl"
         onSubmit={handleAddCustomer}
       >
-        {/* ... other input fields ... */}
+        <div className="grid grid-cols-2 gap-4">
+          <input name="firstName" placeholder="First name" value={form.firstName} onChange={handleFormChange} className="rounded-md border border-neutral-300 px-3 py-2" />
+          <input name="lastName" placeholder="Last name" value={form.lastName} onChange={handleFormChange} className="rounded-md border border-neutral-300 px-3 py-2" />
+        </div>
+
+        <input name="streetAddress" placeholder="Street address" value={form.streetAddress} onChange={handleFormChange} className="w-full rounded-md border border-neutral-300 px-3 py-2" />
+
+        <div className="grid grid-cols-3 gap-4">
+          <input name="city" placeholder="City" value={form.city} onChange={handleFormChange} className="rounded-md border border-neutral-300 px-3 py-2" />
+          <input name="state" placeholder="State" value={form.state} onChange={handleFormChange} className="rounded-md border border-neutral-300 px-3 py-2" />
+          <input name="zip" placeholder="ZIP" value={form.zip} onChange={handleFormChange} className="rounded-md border border-neutral-300 px-3 py-2" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <input name="email" placeholder="Email" value={form.email} onChange={handleFormChange} className="rounded-md border border-neutral-300 px-3 py-2" />
+          <input name="phone" placeholder="Phone" value={form.phone} onChange={handleFormChange} className="rounded-md border border-neutral-300 px-3 py-2" />
+        </div>
+
+        <textarea name="notes" placeholder="Notes" value={form.notes} onChange={(e) => handleFormChange(e as any)} className="w-full rounded-md border border-neutral-300 px-3 py-2" />
+
         <input
-          placeholder="Pictures (comma-separated URLs)"
+          placeholder="Pictures (optional URLs) — or upload files below"
           name="pictures"
           value={form.pictures}
           onChange={handleFormChange}
           className="w-full rounded-md border border-neutral-300 px-3 py-2"
         />
+
         <input
           type="file"
           accept="image/*"
           multiple
+          ref={fileInputRef}
           onChange={handlePhotoFilesChange}
           className="block mt-2"
         />
-        <button
-          type="submit"
-          disabled={submitting}
-          className="bg-sky-600 hover:bg-sky-700 text-white px-6 py-2 rounded font-semibold"
-        >
-          {submitting ? "Adding..." : "Add Customer"}
+
+        <button type="submit" disabled={submitting} className="bg-sky-600 hover:bg-sky-700 text-white px-6 py-2 rounded font-semibold">
+          {submitting ? 'Adding...' : 'Add Customer'}
         </button>
       </form>
-      {/* ... rest unchanged ... */}
+
+      <div className="space-y-4">
+        {customers.map((c) => (
+          <div key={c.id} className="bg-white p-4 rounded border border-neutral-200 shadow max-w-2xl">
+            <div className="flex justify-between items-start">
+              <div>
+                <div className="font-semibold">{c.firstName} {c.lastName}</div>
+                <div className="text-sm text-neutral-600">{c.email}</div>
+              </div>
+              <div className="flex gap-2 items-center">
+                <button onClick={() => handleDeleteCustomer(c)} className="text-sm text-red-600">Delete</button>
+              </div>
+            </div>
+            {c.pictures && c.pictures.length > 0 && (
+              <div className="mt-3 flex gap-2">
+                {c.pictures!.map((p, i) => (
+                  <img key={i} src={p} alt={`pic-${i}`} className="h-20 w-20 object-cover rounded" />
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
-  );
+  )
 }
